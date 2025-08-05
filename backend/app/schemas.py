@@ -1,6 +1,6 @@
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel, HttpUrl, field_validator
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Union
 from enum import Enum
 
 class SentimentEnum(str, Enum):
@@ -33,7 +33,18 @@ class ArticleBase(BaseModel):
     source: Optional[str] = None
     category: Optional[str] = None
     sentiment: Optional[SentimentEnum] = None
-    image_url: Optional[HttpUrl] = None
+    image_url: Optional[str] = None
+    
+    @field_validator('image_url')
+    @classmethod
+    def validate_image_url(cls, v):
+        if v is None or v == '' or v.strip() == '':
+            return None
+        # Basic URL validation - more lenient than HttpUrl
+        v = v.strip()
+        if v.startswith(('http://', 'https://', '//')):
+            return v
+        return None  # Return None for invalid URLs instead of raising error
 
 class ArticleCreate(ArticleBase):
     pass

@@ -5,19 +5,8 @@ import uvicorn
 from dotenv import load_dotenv
 import os
 
-# Debug: Check if .env file exists and load it
-env_path = os.path.join(os.path.dirname(__file__), '.env')
-print(f"Looking for .env file at: {env_path}")
-print(f".env file exists: {os.path.exists(env_path)}")
-
-# Try loading with explicit path
-load_dotenv(env_path)
-
-# Debug: Check if environment variables are loaded
-print(f"OPENAI_API_KEY found: {'OPENAI_API_KEY' in os.environ}")
-if 'OPENAI_API_KEY' in os.environ:
-    key = os.environ['OPENAI_API_KEY']
-    print(f"API key starts with: {key[:10]}...")
+# Load environment variables
+load_dotenv()
 
 from app.database import init_db
 from app.routers import articles, chat, bookmarks, trending, search
