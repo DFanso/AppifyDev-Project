@@ -4,7 +4,7 @@ from typing import List
 
 from ..database import get_db, ChatHistory
 from ..schemas import ChatMessage, ChatResponse, ChatHistoryResponse
-from ..services.ai_chat import ai_chat
+from ..services.ai_chat import get_ai_chat
 
 router = APIRouter()
 
@@ -15,6 +15,7 @@ async def chat_with_ai(
 ):
     """Send a message to the AI chat assistant"""
     try:
+        ai_chat = get_ai_chat()
         response_data = ai_chat.generate_response(
             message=chat_message.message,
             article_id=chat_message.article_id,
@@ -44,6 +45,7 @@ async def chat_with_ai(
 async def summarize_article(article_id: int):
     """Get an AI-generated summary of a specific article"""
     try:
+        ai_chat = get_ai_chat()
         summary = ai_chat.summarize_article(article_id)
         return {"summary": summary, "article_id": article_id}
     except Exception as e:
@@ -83,6 +85,7 @@ async def clear_chat_history(user_id: str, db: Session = Depends(get_db)):
 async def get_article_topics(article_id: int):
     """Get related topics for an article"""
     try:
+        ai_chat = get_ai_chat()
         topics = ai_chat.get_related_topics(article_id)
         return {"article_id": article_id, "topics": topics}
     except Exception as e:

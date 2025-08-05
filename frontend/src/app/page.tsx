@@ -7,13 +7,15 @@ import { SearchBar } from '@/components/search/search-bar';
 import { TrendingTopics } from '@/components/trending/trending-topics';
 import { CategoryFilter } from '@/components/filters/category-filter';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
-import { Article } from '@/types';
+import { SetupGuide } from '@/components/ui/setup-guide';
+import { type Article } from '@/lib/validations';
 
 export default function Home() {
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [showSetupGuide, setShowSetupGuide] = useState(true);
 
   const handleArticleSelect = (article: Article) => {
     setSelectedArticle(article);
@@ -66,6 +68,13 @@ export default function Home() {
 
       {/* Main Content */}
       <div className="container mx-auto px-4 py-6">
+        {/* Setup Guide */}
+        {showSetupGuide && (
+          <div className="mb-6">
+            <SetupGuide onDismiss={() => setShowSetupGuide(false)} />
+          </div>
+        )}
+        
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Trending Sidebar */}
           <div className="lg:col-span-1 order-2 lg:order-1">

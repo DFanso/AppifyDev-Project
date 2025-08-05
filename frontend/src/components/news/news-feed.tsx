@@ -1,1 +1,96 @@
-'use client';\n\nimport { useQuery } from '@tanstack/react-query';\nimport { ArticleCard } from './article-card';\nimport { LoadingSpinner } from '../ui/loading-spinner';\nimport { articlesApi } from '@/lib/api';\nimport { Article } from '@/types';\n\ninterface NewsFeedProps {\n  searchQuery: string;\n  selectedCategory: string;\n  onArticleSelect: (article: Article) => void;\n}\n\nexport function NewsFeed({ searchQuery, selectedCategory, onArticleSelect }: NewsFeedProps) {\n  const { data, isLoading, error } = useQuery({\n    queryKey: ['articles', searchQuery, selectedCategory],\n    queryFn: async () => {\n      if (searchQuery) {\n        const { searchApi } = await import('@/lib/api');\n        return searchApi.searchArticles({\n          q: searchQuery,\n          category: selectedCategory === 'all' ? undefined : selectedCategory,\n          page: 1,\n          page_size: 20,\n        });\n      }\n      \n      return articlesApi.getArticles({\n        category: selectedCategory === 'all' ? undefined : selectedCategory,\n        page: 1,\n        page_size: 20,\n      });\n    },\n    staleTime: 5 * 60 * 1000, // 5 minutes\n  });\n\n  if (isLoading) {\n    return (\n      <div className=\"flex justify-center py-12\">\n        <LoadingSpinner />\n      </div>\n    );\n  }\n\n  if (error) {\n    return (\n      <div className=\"text-center py-12\">\n        <p className=\"text-muted-foreground\">Failed to load articles. Please try again.</p>\n      </div>\n    );\n  }\n\n  if (!data?.articles?.length) {\n    return (\n      <div className=\"text-center py-12\">\n        <p className=\"text-muted-foreground\">No articles found.</p>\n      </div>\n    );\n  }\n\n  return (\n    <div className=\"space-y-6\">\n      <div className=\"flex items-center justify-between\">\n        <h2 className=\"text-xl font-semibold\">\n          {searchQuery ? `Search Results: \"${searchQuery}\"` : 'Latest Tech News'}\n        </h2>\n        <span className=\"text-sm text-muted-foreground\">\n          {data.total} articles\n        </span>\n      </div>\n      \n      <div className=\"grid gap-6\">\n        {data.articles.map((article) => (\n          <ArticleCard\n            key={article.id}\n            article={article}\n            onClick={() => onArticleSelect(article)}\n          />\n        ))}\n      </div>\n      \n      {data.has_next && (\n        <div className=\"text-center py-4\">\n          <button className=\"text-primary hover:underline\">\n            Load more articles\n          </button>\n        </div>\n      )}\n    </div>\n  );\n}\n
+'use client';
+
+import { useQuery } from '@tanstack/react-query';
+import { ArticleCard } from './article-card';
+import { LoadingSpinner } from '../ui/loading-spinner';
+import { ErrorDisplay } from '../ui/error-display';
+import { articlesApi, searchApi } from '@/lib/api';
+import { type Article } from '@/lib/validations';
+
+interface NewsFeedProps {
+  searchQuery: string;
+  selectedCategory: string;
+  onArticleSelect: (article: Article) => void;
+}
+
+export function NewsFeed({ searchQuery, selectedCategory, onArticleSelect }: NewsFeedProps) {
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ['articles', searchQuery, selectedCategory],
+    queryFn: async () => {
+      if (searchQuery) {
+        return searchApi.searchArticles({
+          q: searchQuery,
+          category: selectedCategory === 'all' ? undefined : selectedCategory,
+          page: 1,
+          page_size: 20,
+        });
+      }
+      
+      return articlesApi.getArticles({
+        category: selectedCategory === 'all' ? undefined : selectedCategory,
+        page: 1,
+        page_size: 20,
+      });
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 2,
+    retryDelay: 1000,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-12">
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <ErrorDisplay 
+        error={error as Error}
+        onRetry={() => refetch()}
+        title="Failed to load articles"
+      />
+    );
+  }
+
+  if (!data?.articles?.length) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-muted-foreground">No articles found.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold">
+          {searchQuery ? `Search Results: "${searchQuery}"` : 'Latest Tech News'}
+        </h2>
+        <span className="text-sm text-muted-foreground">
+          {data.total} articles
+        </span>
+      </div>
+      
+      <div className="grid gap-6">
+        {data.articles.map((article) => (
+          <ArticleCard
+            key={article.id}
+            article={article}
+            onClick={() => onArticleSelect(article)}
+          />
+        ))}
+      </div>
+      
+      {data.has_next && (
+        <div className="text-center py-4">
+          <button className="text-primary hover:underline">
+            Load more articles
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}

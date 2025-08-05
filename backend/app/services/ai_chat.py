@@ -18,7 +18,11 @@ class AINewsChat:
     def __init__(self):
         self.openai_api_key = os.getenv("OPENAI_API_KEY")
         if not self.openai_api_key:
-            logger.warning("OPENAI_API_KEY not found in environment variables")
+            logger.error("OPENAI_API_KEY not found in environment variables")
+            logger.error("Available environment variables: %s", [k for k in os.environ.keys() if 'OPENAI' in k or 'API' in k])
+        else:
+            logger.info("OpenAI API key found and configured")
+            logger.info("API key starts with: %s", self.openai_api_key[:10] + "..." if len(self.openai_api_key) > 10 else "invalid")
         
         self.llm = ChatOpenAI(
             api_key=self.openai_api_key,
@@ -247,5 +251,15 @@ When a user references a specific article, use the article content provided to g
         finally:
             db.close()
 
-# Global chat instance
-ai_chat = AINewsChat()
+# Global chat instance - lazy loaded
+_ai_chat_instance = None
+
+def get_ai_chat():
+    """Get or create the AI chat instance"""
+    global _ai_chat_instance
+    if _ai_chat_instance is None:
+        _ai_chat_instance = AINewsChat()
+    return _ai_chat_instance
+
+# For backward compatibility
+ai_chat = get_ai_chat()
