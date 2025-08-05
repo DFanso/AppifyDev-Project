@@ -1,0 +1,391 @@
+### Tech News Aggregator API Tests
+### Base URL: http://localhost:8000
+
+# Variables
+@baseURL = http://localhost:8000
+@userId = test_user_123
+@articleId = 1
+
+###############################################################################
+# HEALTH CHECK
+###############################################################################
+
+### Health Check
+GET {{baseURL}}/health
+
+### Root Endpoint
+GET {{baseURL}}/
+
+### API Documentation
+GET {{baseURL}}/docs
+
+###############################################################################
+# ARTICLES API
+###############################################################################
+
+### Get all articles (paginated)
+GET {{baseURL}}/api/articles
+Accept: application/json
+
+### Get articles with filters
+GET {{baseURL}}/api/articles?page=1&page_size=10&category=AI/ML&source=TechCrunch
+Accept: application/json
+
+### Get articles with date filter
+GET {{baseURL}}/api/articles?date_from=2024-01-01&date_to=2024-12-31
+Accept: application/json
+
+### Get articles with sentiment filter
+GET {{baseURL}}/api/articles?sentiment=positive&page_size=5
+Accept: application/json
+
+### Get specific article by ID
+GET {{baseURL}}/api/articles/{{articleId}}
+Accept: application/json
+
+### Get articles by category
+GET {{baseURL}}/api/articles/category/AI/ML?page=1&page_size=5
+Accept: application/json
+
+### Get articles by source
+GET {{baseURL}}/api/articles/source/TechCrunch?page=1&page_size=5
+Accept: application/json
+
+### Get recent articles (last 24 hours)
+GET {{baseURL}}/api/articles/recent/24?page=1&page_size=10
+Accept: application/json
+
+### Get recent articles (last week)
+GET {{baseURL}}/api/articles/recent/168?page=1&page_size=10
+Accept: application/json
+
+###############################################################################
+# SEARCH API
+###############################################################################
+
+### Basic search
+GET {{baseURL}}/api/search?q=artificial intelligence&page=1&page_size=5
+Accept: application/json
+
+### Search with filters
+GET {{baseURL}}/api/search?q=startup&category=Startups&sentiment=positive&page_size=3
+Accept: application/json
+
+### Search with date range
+GET {{baseURL}}/api/search?q=security&date_from=2024-01-01&page_size=5
+Accept: application/json
+
+### Advanced search (POST)
+POST {{baseURL}}/api/search
+Content-Type: application/json
+
+{
+  "query": "machine learning",
+  "filters": {
+    "category": "AI/ML",
+    "sentiment": "positive",
+    "source": "TechCrunch"
+  },
+  "page": 1,
+  "page_size": 5
+}
+
+### Get search suggestions
+GET {{baseURL}}/api/search/suggestions?q=ai&limit=5
+Accept: application/json
+
+### Get popular searches
+GET {{baseURL}}/api/search/popular?limit=10
+Accept: application/json
+
+###############################################################################
+# CHAT API
+###############################################################################
+
+### Send chat message without article context
+POST {{baseURL}}/api/chat
+Content-Type: application/json
+
+{
+  "message": "What are the latest trends in AI?",
+  "user_id": "{{userId}}"
+}
+
+### Send chat message with article context
+POST {{baseURL}}/api/chat
+Content-Type: application/json
+
+{
+  "message": "Can you explain the implications of this funding round?",
+  "article_id": {{articleId}},
+  "user_id": "{{userId}}"
+}
+
+### Ask for article summary
+POST {{baseURL}}/api/chat
+Content-Type: application/json
+
+{
+  "message": "Can you summarize this article?",
+  "article_id": {{articleId}},
+  "user_id": "{{userId}}"
+}
+
+### Ask comparative question
+POST {{baseURL}}/api/chat
+Content-Type: application/json
+
+{
+  "message": "How does this relate to other AI developments?",
+  "article_id": {{articleId}},
+  "user_id": "{{userId}}"
+}
+
+### Summarize specific article
+POST {{baseURL}}/api/chat/summarize/{{articleId}}
+Content-Type: application/json
+
+### Get chat history for user
+GET {{baseURL}}/api/chat/history/{{userId}}?limit=10
+Accept: application/json
+
+### Clear chat history for user
+DELETE {{baseURL}}/api/chat/history/{{userId}}
+
+### Get article topics
+GET {{baseURL}}/api/chat/topics/{{articleId}}
+Accept: application/json
+
+###############################################################################
+# BOOKMARKS API
+###############################################################################
+
+### Create bookmark
+POST {{baseURL}}/api/bookmarks
+Content-Type: application/json
+
+{
+  "article_id": {{articleId}},
+  "user_id": "{{userId}}"
+}
+
+### Get user bookmarks
+GET {{baseURL}}/api/bookmarks?user_id={{userId}}&skip=0&limit=10
+Accept: application/json
+
+### Check if article is bookmarked
+GET {{baseURL}}/api/bookmarks/check/{{articleId}}?user_id={{userId}}
+Accept: application/json
+
+### Delete bookmark by article ID
+DELETE {{baseURL}}/api/bookmarks/article/{{articleId}}?user_id={{userId}}
+
+### Delete bookmark by bookmark ID (replace 1 with actual bookmark ID)
+DELETE {{baseURL}}/api/bookmarks/1
+
+###############################################################################
+# TRENDING API
+###############################################################################
+
+### Get trending topics (last 24 hours)
+GET {{baseURL}}/api/trending/topics?hours=24&limit=10
+Accept: application/json
+
+### Get trending topics (last week)
+GET {{baseURL}}/api/trending/topics?hours=168&limit=15
+Accept: application/json
+
+### Get trending categories
+GET {{baseURL}}/api/trending/categories?hours=24
+Accept: application/json
+
+### Get trending sources
+GET {{baseURL}}/api/trending/sources?hours=24
+Accept: application/json
+
+### Get sentiment trends
+GET {{baseURL}}/api/trending/sentiment?hours=24
+Accept: application/json
+
+### Get trending timeline (daily buckets for last week)
+GET {{baseURL}}/api/trending/timeline?hours=168&interval_hours=24
+Accept: application/json
+
+### Get trending timeline (hourly buckets for last day)
+GET {{baseURL}}/api/trending/timeline?hours=24&interval_hours=1
+Accept: application/json
+
+###############################################################################
+# ERROR TESTING
+###############################################################################
+
+### Test non-existent article
+GET {{baseURL}}/api/articles/99999
+Accept: application/json
+
+### Test invalid search query
+GET {{baseURL}}/api/search?q=
+Accept: application/json
+
+### Test invalid bookmark creation
+POST {{baseURL}}/api/bookmarks
+Content-Type: application/json
+
+{
+  "article_id": 99999,
+  "user_id": "{{userId}}"
+}
+
+### Test chat without message
+POST {{baseURL}}/api/chat
+Content-Type: application/json
+
+{
+  "user_id": "{{userId}}"
+}
+
+###############################################################################
+# BULK TESTING SCENARIOS
+###############################################################################
+
+### Scenario 1: User discovers and bookmarks AI articles
+# 1. Search for AI articles
+GET {{baseURL}}/api/search?q=artificial intelligence&category=AI/ML&page_size=3
+
+# 2. Get first article details (replace ID with actual from search results)
+GET {{baseURL}}/api/articles/1
+
+# 3. Chat about the article
+POST {{baseURL}}/api/chat
+Content-Type: application/json
+
+{
+  "message": "What makes this AI development significant?",
+  "article_id": 1,
+  "user_id": "{{userId}}"
+}
+
+# 4. Bookmark the article
+POST {{baseURL}}/api/bookmarks
+Content-Type: application/json
+
+{
+  "article_id": 1,
+  "user_id": "{{userId}}"
+}
+
+### Scenario 2: Explore trending topics
+# 1. Get trending topics
+GET {{baseURL}}/api/trending/topics?hours=24&limit=5
+
+# 2. Get articles in trending category
+GET {{baseURL}}/api/articles/category/Startups?page_size=3
+
+# 3. Get sentiment analysis
+GET {{baseURL}}/api/trending/sentiment?hours=24
+
+### Scenario 3: Content discovery workflow
+# 1. Get recent articles
+GET {{baseURL}}/api/articles/recent/24?page_size=5
+
+# 2. Search suggestions
+GET {{baseURL}}/api/search/suggestions?q=web3&limit=5
+
+# 3. Popular searches
+GET {{baseURL}}/api/search/popular?limit=10
+
+# 4. Timeline analysis
+GET {{baseURL}}/api/trending/timeline?hours=168&interval_hours=24
+
+###############################################################################
+# PERFORMANCE TESTING
+###############################################################################
+
+### Large page size test
+GET {{baseURL}}/api/articles?page_size=100
+Accept: application/json
+
+### Multiple filters test
+GET {{baseURL}}/api/articles?category=AI/ML&source=TechCrunch&sentiment=positive&page_size=50
+Accept: application/json
+
+### Complex search test
+POST {{baseURL}}/api/search
+Content-Type: application/json
+
+{
+  "query": "artificial intelligence machine learning startup funding",
+  "filters": {
+    "category": "AI/ML",
+    "sentiment": "positive",
+    "date_from": "2024-01-01"
+  },
+  "page": 1,
+  "page_size": 20
+}
+
+###############################################################################
+# INTEGRATION TESTING
+###############################################################################
+
+### Full user workflow simulation
+# This simulates a complete user session
+
+# 1. Get trending topics to see what's hot
+GET {{baseURL}}/api/trending/topics?hours=24&limit=5
+
+# 2. Search for specific trending topic
+GET {{baseURL}}/api/search?q=AI&page_size=3
+
+# 3. Read specific article
+GET {{baseURL}}/api/articles/1
+
+# 4. Chat about the article
+POST {{baseURL}}/api/chat
+Content-Type: application/json
+
+{
+  "message": "Can you summarize this article and explain why it's important?",
+  "article_id": 1,
+  "user_id": "integration_test_user"
+}
+
+# 5. Get article topics
+GET {{baseURL}}/api/chat/topics/1
+
+# 6. Bookmark the article
+POST {{baseURL}}/api/bookmarks
+Content-Type: application/json
+
+{
+  "article_id": 1,
+  "user_id": "integration_test_user"
+}
+
+# 7. Check bookmarks
+GET {{baseURL}}/api/bookmarks?user_id=integration_test_user
+
+# 8. Get chat history
+GET {{baseURL}}/api/chat/history/integration_test_user?limit=5
+
+###############################################################################
+# NOTES
+###############################################################################
+
+# Before running these tests:
+# 1. Start the backend server: `cd backend && uv run uvicorn main:app --reload`
+# 2. Make sure you have some articles in the database: `uv run python scripts/fetch_news.py`
+# 3. Set your OpenAI API key in backend/.env for chat functionality
+# 4. Replace {{articleId}} with actual article IDs from your database
+# 5. Some tests may fail if no data exists - run the news fetching script first
+
+# To use with VS Code REST Client extension:
+# 1. Install the REST Client extension
+# 2. Open this file in VS Code
+# 3. Click "Send Request" above any ### request
+# 4. View responses in the split panel
+
+# To use with other HTTP clients:
+# 1. Copy the request sections you want to test
+# 2. Adjust the base URL and variables as needed
+# 3. Execute the requests in your preferred tool (Postman, Insomnia, curl, etc.)
