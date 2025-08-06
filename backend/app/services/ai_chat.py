@@ -24,12 +24,22 @@ class AINewsChat:
             logger.info("OpenAI API key found and configured")
             logger.info("API key starts with: %s", self.openai_api_key[:10] + "..." if len(self.openai_api_key) > 10 else "invalid")
         
-        self.llm = ChatOpenAI(
-            api_key=self.openai_api_key,
-            model="gpt-3.5-turbo",
-            temperature=0.7,
-            max_tokens=1000
-        ) if self.openai_api_key else None
+        # Temporarily disable ChatOpenAI for Docker compatibility
+        self.llm = None
+        if self.openai_api_key:
+            try:
+                from langchain_openai import ChatOpenAI
+                self.llm = ChatOpenAI(
+                    api_key=self.openai_api_key,
+                    model="gpt-3.5-turbo",
+                    temperature=0.7,
+                    max_tokens=1000
+                )
+                logger.info("✅ ChatOpenAI initialized successfully")
+            except Exception as e:
+                logger.warning(f"⚠️ Failed to initialize ChatOpenAI: {e}")
+                logger.info("📝 Continuing without AI chat (compatibility mode)")
+                self.llm = None
         
         self.memory = ConversationBufferMemory(
             memory_key="chat_history",
