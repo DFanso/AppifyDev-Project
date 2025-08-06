@@ -21,21 +21,18 @@ jobs:
           echo "REDIS_URL=${{ secrets.REDIS_URL }}" >> .env
         shell: bash
 
-      - name: Install rsync
-        run: sudo apt-get update && sudo apt-get install -y rsync
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y sshpass rsync
 
-      - name: Set up SSH key
+      - name: Add remote host to known_hosts
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
         shell: bash
 
       - name: Sync project files to VPS
         run: |
-          rsync -avz --delete \
-            -e "ssh -v -i ~/.ssh/id_rsa" \
+          sshpass -p "${{ secrets.VPS_PASSWORD }}" rsync -avz --delete \
             --exclude=".git/" \
             --exclude=".github/" \
             . "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/appify"
@@ -43,7 +40,7 @@ jobs:
 
       - name: Deploy on VPS with Docker Compose
         run: |
-          ssh -v -i ~/.ssh/id_rsa ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} '
+          sshpass -p "${{ secrets.VPS_PASSWORD }}" ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} '
           set -e
           cd /appify
           docker-compose down
