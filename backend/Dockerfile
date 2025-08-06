@@ -19,32 +19,34 @@ RUN apt-get update && apt-get install -y \
 # Upgrade pip to latest version
 RUN pip install --upgrade pip
 
-# Install Python dependencies with compatible versions
+# Copy requirements and install dependencies
+COPY pyproject.toml .
 RUN pip install --no-cache-dir \
-    fastapi==0.104.1 \
-    uvicorn[standard]==0.24.0 \
+    fastapi>=0.116.1 \
+    uvicorn[standard]>=0.35.0 \
     gunicorn==21.2.0 \
-    sqlalchemy==2.0.25 \
-    pydantic==2.5.2 \
-    pydantic-settings==2.1.0 \
-    python-multipart==0.0.6 \
-    python-dotenv==1.0.0 \
-    requests==2.31.0 \
-    feedparser==6.0.10 \
-    beautifulsoup4==4.12.2 \
-    lxml==4.9.4 \
-    openai==1.10.0 \
-    langchain==0.1.0 \
-    langchain-openai==0.0.5 \
-    langchain-community==0.0.10 \
-    redis==5.0.1
+    sqlalchemy>=2.0.42 \
+    pydantic>=2.5.2 \
+    pydantic-settings>=2.1.0 \
+    python-multipart>=0.0.20 \
+    python-dotenv>=1.1.1 \
+    requests>=2.32.4 \
+    feedparser>=6.0.11 \
+    beautifulsoup4>=4.13.4 \
+    lxml>=4.9.4 \
+    openai>=1.98.0 \
+    langchain>=0.3.27 \
+    langchain-openai>=0.3.28 \
+    langchain-community>=0.3.0 \
+    redis>=5.0.0
 
 # Copy application code
 COPY . .
 
-# Create non-root user and set permissions
-RUN groupadd -r appuser && useradd -r -g appuser appuser \
-    && chown -R appuser:appuser /app
+# Create directories and set permissions for database
+RUN mkdir -p /app/data && \
+    groupadd -r appuser && useradd -r -g appuser appuser && \
+    chown -R appuser:appuser /app
 
 # Switch to non-root user
 USER appuser
