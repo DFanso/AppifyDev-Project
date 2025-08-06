@@ -37,14 +37,14 @@ jobs:
             -e "ssh -i ~/.ssh/id_rsa" \
             --exclude=".git/" \
             --exclude=".github/" \
-            . ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/root
+            . ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/appify
         shell: bash
 
       - name: Deploy on VPS with Docker Compose
         run: |
           ssh -i ~/.ssh/id_rsa ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} '
           set -e
-          cd /root
+          cd /appify
           docker-compose down
           docker-compose -f docker-compose.yml up -d --build
           echo "Pruning old Docker images..."
