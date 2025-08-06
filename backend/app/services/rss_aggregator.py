@@ -10,6 +10,7 @@ import logging
 from ..database import SessionLocal, Article
 from ..services.sentiment_analyzer import analyze_sentiment
 from ..services.content_extractor import extract_article_content
+from ..services.redis_cache import CacheInvalidator
 
 logger = logging.getLogger(__name__)
 
@@ -666,6 +667,13 @@ class RSSAggregator:
                                 db.commit()
                                 total_new_articles += 1
                                 logger.info(f"✅ Added new article: {article.title}")
+                                
+                                # Invalidate relevant caches when new articles are added
+                                if total_new_articles % 5 == 0:  # Batch invalidation every 5 articles
+                                    CacheInvalidator.invalidate_articles()
+                                    CacheInvalidator.invalidate_trending()
+                                    logger.info("🗑️ Cache invalidated due to new articles")
+                                    
                             except Exception as commit_error:
                                 db.rollback()
                                 logger.error(f"❌ Failed to commit article '{entry_data.get('title', 'Unknown')}': {commit_error}")

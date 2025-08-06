@@ -6,6 +6,7 @@ from datetime import datetime
 
 from ..database import get_db, Article
 from ..schemas import ArticleListResponse, SearchRequest
+from ..services.redis_cache import cache, CacheKeys
 
 router = APIRouter()
 
@@ -22,6 +23,15 @@ async def search_articles(
     db: Session = Depends(get_db)
 ):
     """Search articles with full-text search and filters"""
+    
+    # Generate cache key for search results
+    filters_str = f"cat={category}&src={source}&sent={sentiment}&df={date_from}&dt={date_to}"
+    cache_key = CacheKeys.search_results(q, page, filters_str)
+    
+    # Try cache first (10 minute TTL for search results)
+    cached_result = cache.get(cache_key)
+    if cached_result is not None:
+        return cached_result
     
     # Start with base query
     query = db.query(Article)
@@ -71,13 +81,18 @@ async def search_articles(
     
     has_next = total > (page * page_size)
     
-    return ArticleListResponse(
+    result = ArticleListResponse(
         articles=articles,
         total=total,
         page=page,
         page_size=page_size,
         has_next=has_next
     )
+    
+    # Cache the search result for 10 minutes
+    cache.set(cache_key, result.dict(), ttl=600)
+    
+    return result
 
 @router.post("/", response_model=ArticleListResponse)
 async def advanced_search(
@@ -162,6 +177,12 @@ async def get_search_suggestions(
 ):
     """Get search suggestions based on article titles and keywords"""
     
+    # Try cache first (30 minute TTL for suggestions)
+    cache_key = CacheKeys.search_suggestions(q, limit)
+    cached_result = cache.get(cache_key)
+    if cached_result is not None:
+        return cached_result
+    
     search_term = f"%{q}%"
     
     # Get article titles that match the search term
@@ -181,7 +202,12 @@ async def get_search_suggestions(
     suggestion_list = list(title_words)
     suggestion_list.sort(key=lambda x: (x.startswith(q.lower()), x))
     
-    return {"suggestions": suggestion_list[:limit]}
+    result = {"suggestions": suggestion_list[:limit]}
+    
+    # Cache suggestions for 30 minutes
+    cache.set(cache_key, result, ttl=1800)
+    
+    return result
 
 @router.get("/popular")
 async def get_popular_searches(

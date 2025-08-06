@@ -4,6 +4,7 @@ from typing import List
 
 from ..database import get_db, Bookmark, Article
 from ..schemas import BookmarkCreate, BookmarkResponse
+from ..services.redis_cache import CacheInvalidator, cache, CacheKeys
 
 router = APIRouter()
 
@@ -36,6 +37,9 @@ async def create_bookmark(
     db.commit()
     db.refresh(db_bookmark)
     
+    # Invalidate user's bookmarks cache
+    CacheInvalidator.invalidate_user_bookmarks(db_bookmark.user_id)
+    
     # Return bookmark with article data
     return BookmarkResponse(
         id=db_bookmark.id,
@@ -52,6 +56,12 @@ async def get_bookmarks(
     db: Session = Depends(get_db)
 ):
     """Get all bookmarks for a user"""
+    # Try cache first (5 minute TTL for bookmarks)
+    cache_key = CacheKeys.bookmarks_list(user_id) + f"&skip={skip}&limit={limit}"
+    cached_result = cache.get(cache_key)
+    if cached_result is not None:
+        return cached_result
+        
     bookmarks = db.query(Bookmark).filter(
         Bookmark.user_id == user_id
     ).order_by(Bookmark.created_at.desc()).offset(skip).limit(limit).all()
@@ -68,6 +78,9 @@ async def get_bookmarks(
                 created_at=bookmark.created_at
             ))
     
+    # Cache the result for 5 minutes
+    cache.set(cache_key, [bookmark.dict() for bookmark in result], ttl=300)
+    
     return result
 
 @router.delete("/{bookmark_id}")
@@ -77,8 +90,12 @@ async def delete_bookmark(bookmark_id: int, db: Session = Depends(get_db)):
     if not bookmark:
         raise HTTPException(status_code=404, detail="Bookmark not found")
     
+    user_id = bookmark.user_id
     db.delete(bookmark)
     db.commit()
+    
+    # Invalidate user's bookmarks cache
+    CacheInvalidator.invalidate_user_bookmarks(user_id)
     
     return {"message": "Bookmark deleted successfully"}
 
@@ -99,6 +116,9 @@ async def delete_bookmark_by_article(
     
     db.delete(bookmark)
     db.commit()
+    
+    # Invalidate user's bookmarks cache
+    CacheInvalidator.invalidate_user_bookmarks(user_id)
     
     return {"message": "Bookmark deleted successfully"}
 
