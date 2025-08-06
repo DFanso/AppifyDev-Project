@@ -1,0 +1,54 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy Application
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create .env file
+        run: |
+          echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" > .env
+          echo "REDIS_URL=${{ secrets.REDIS_URL }}" >> .env
+        shell: bash
+
+      - name: Install rsync
+        run: sudo apt-get update && sudo apt-get install -y rsync
+
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
+        shell: bash
+
+      - name: Sync project files to VPS
+        run: |
+          rsync -avz --delete \
+            -e "ssh -i ~/.ssh/id_rsa" \
+            --exclude=".git/" \
+            --exclude=".github/" \
+            . ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:${{ secrets.VPS_DEST_PATH }}
+        shell: bash
+
+      - name: Deploy on VPS with Docker Compose
+        run: |
+          ssh -i ~/.ssh/id_rsa ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} '
+          set -e
+          cd ${{ secrets.VPS_DEST_PATH }}
+          docker-compose down
+          docker-compose -f docker-compose.yml up -d --build
+          echo "Pruning old Docker images..."
+          docker image prune -af
+          echo "Deployment successful!"
+          '
+        shell: bash
