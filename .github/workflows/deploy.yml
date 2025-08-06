@@ -42,7 +42,7 @@ jobs:
       run: |
         export SSHPASS="${{ secrets.VPS_PASSWORD }}"
         sshpass -e ssh -o ConnectTimeout=60 -o ServerAliveInterval=30 -o ServerAliveCountMax=10 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p 22 ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }} '
-        cd ~/appify
+        cd ~/appify-app
         echo "Current directory: $(pwd)"
         echo "Listing files:"
         ls -la
