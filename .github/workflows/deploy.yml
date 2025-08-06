@@ -36,7 +36,7 @@ jobs:
           --exclude=frontend \
           --timeout=600 \
           -e "sshpass -e ssh -o ConnectTimeout=60 -o ServerAliveInterval=30 -o ServerAliveCountMax=10 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p 22" \
-          ./ ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }}:~/appify/
+          ./ ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }}:~/appify-app/
 
     - name: Build and Deploy Docker Compose
       run: |
