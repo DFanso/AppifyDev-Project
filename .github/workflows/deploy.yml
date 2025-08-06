@@ -31,7 +31,8 @@ jobs:
       - name: Deploy on VPS with Docker Compose
         run: |
           cd /appify
-          sudo docker-compose down
+          ls -la
+          sudo docker-compose down || true
           sudo docker-compose -f docker-compose.yml up -d --build
           echo "Pruning old Docker images..."
           sudo docker image prune -af
