@@ -110,7 +110,7 @@ export function NewsFeed({ searchQuery, selectedCategory, onArticleSelect }: New
           <ArticleCard
             key={article.id}
             article={article}
-            onClick={() => onArticleSelect(article)}
+            onDiscussClick={() => onArticleSelect(article)}
           />
         ))}
       </div>

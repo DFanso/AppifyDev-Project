@@ -61,7 +61,7 @@ async def get_chat_history(
     try:
         history = db.query(ChatHistory).filter(
             ChatHistory.user_id == user_id
-        ).order_by(ChatHistory.created_at.desc()).limit(limit).all()
+        ).order_by(ChatHistory.created_at.asc()).limit(limit).all()
         
         return history
     except Exception as e:

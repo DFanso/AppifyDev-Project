@@ -7,6 +7,7 @@ import { chatApi } from '@/lib/api';
 import { type Article, type ChatHistory } from '@/lib/validations';
 import { LoadingSpinner } from '../ui/loading-spinner';
 import { ErrorDisplay } from '../ui/error-display';
+import { useSession } from '@/hooks/use-session';
 
 interface ChatInterfaceProps {
   selectedArticle: Article | null;
@@ -16,14 +17,16 @@ interface ChatInterfaceProps {
 
 export function ChatInterface({ selectedArticle, isOpen, onClose }: ChatInterfaceProps) {
   const [message, setMessage] = useState('');
-  const [userId] = useState('user_' + Math.random().toString(36).substr(2, 9));
+  const { userId, isLoading: sessionLoading } = useSession();
+  const [previousMessageCount, setPreviousMessageCount] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
 
   const { data: chatHistory, isLoading } = useQuery({
     queryKey: ['chat-history', userId],
     queryFn: () => chatApi.getChatHistory(userId, 50),
-    enabled: isOpen,
+    enabled: isOpen && !sessionLoading && !!userId,
   });
 
   const sendMessageMutation = useMutation({
@@ -51,12 +54,31 @@ export function ChatInterface({ selectedArticle, isOpen, onClose }: ChatInterfac
   };
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // Only scroll within the chat container, not the entire page
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    }
   };
 
   useEffect(() => {
-    scrollToBottom();
-  }, [chatHistory, sendMessageMutation.isPending]);
+    // Only auto-scroll when there are new messages (not when initially loading)
+    if (chatHistory && chatHistory.length > previousMessageCount) {
+      setTimeout(scrollToBottom, 100);
+      setPreviousMessageCount(chatHistory.length);
+    }
+  }, [chatHistory, previousMessageCount]);
+
+  useEffect(() => {
+    // Auto-scroll when sending a message
+    if (sendMessageMutation.isPending) {
+      setTimeout(scrollToBottom, 100);
+    }
+  }, [sendMessageMutation.isPending]);
+
+  // Reset message count when article changes or chat closes
+  useEffect(() => {
+    setPreviousMessageCount(0);
+  }, [selectedArticle?.id, isOpen]);
 
   if (!isOpen) {
     return (
@@ -99,7 +121,7 @@ export function ChatInterface({ selectedArticle, isOpen, onClose }: ChatInterfac
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
         {isLoading ? (
           <LoadingSpinner />
         ) : chatHistory?.length ? (

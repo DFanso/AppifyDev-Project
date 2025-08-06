@@ -6,10 +6,10 @@ import { BookmarkButton } from '../bookmarks/bookmark-button';
 
 interface ArticleCardProps {
   article: Article;
-  onClick: () => void;
+  onDiscussClick: () => void;
 }
 
-export function ArticleCard({ article, onClick }: ArticleCardProps) {
+export function ArticleCard({ article, onDiscussClick }: ArticleCardProps) {
   const getSentimentColor = (sentiment?: string) => {
     switch (sentiment) {
       case 'positive':
@@ -17,14 +17,17 @@ export function ArticleCard({ article, onClick }: ArticleCardProps) {
       case 'negative':
         return 'text-red-600 bg-red-50 dark:bg-red-900/20';
       default:
-        return 'text-gray-600 bg-gray-50 dark:bg-gray-800';
+        return 'text-gray-700 bg-gray-100 dark:text-white dark:bg-gray-700';
     }
+  };
+
+  const handleArticleClick = () => {
+    window.open(article.url, '_blank');
   };
 
   return (
     <article 
-      className="group cursor-pointer rounded-lg border bg-card p-6 transition-all hover:shadow-md hover:border-primary/20"
-      onClick={onClick}
+      className="group rounded-lg border bg-card p-6 transition-all hover:shadow-md hover:border-primary/20"
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 space-y-3">
@@ -36,12 +39,18 @@ export function ArticleCard({ article, onClick }: ArticleCardProps) {
             <span>{formatDistanceToNow(new Date(article.published_at || article.created_at))} ago</span>
           </div>
           
-          <h3 className="font-semibold leading-tight group-hover:text-primary transition-colors line-clamp-2">
+          <h3 
+            className="font-semibold leading-tight cursor-pointer hover:text-primary transition-colors line-clamp-2"
+            onClick={handleArticleClick}
+          >
             {article.title}
           </h3>
           
           {article.content && (
-            <p className="text-sm text-muted-foreground line-clamp-3">
+            <p 
+              className="text-sm text-muted-foreground line-clamp-3 cursor-pointer hover:text-foreground transition-colors"
+              onClick={handleArticleClick}
+            >
               {article.content.length > 200 ? `${article.content.substring(0, 200)}...` : article.content}
             </p>
           )}
@@ -60,7 +69,10 @@ export function ArticleCard({ article, onClick }: ArticleCardProps) {
             
             <div className="flex items-center gap-2">
               <BookmarkButton articleId={article.id} />
-              <button className="text-xs text-primary hover:underline">
+              <button 
+                onClick={onDiscussClick}
+                className="text-xs text-primary hover:underline"
+              >
                 Discuss with AI →
               </button>
             </div>
@@ -68,7 +80,10 @@ export function ArticleCard({ article, onClick }: ArticleCardProps) {
         </div>
         
         {article.image_url && (
-          <div className="w-24 h-24 flex-shrink-0">
+          <div 
+            className="w-24 h-24 flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+            onClick={handleArticleClick}
+          >
             <img 
               src={article.image_url} 
               alt={article.title}

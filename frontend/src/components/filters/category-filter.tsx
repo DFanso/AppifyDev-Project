@@ -1,7 +1,6 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useRef, useEffect, useState } from 'react';
 import { type Category } from '@/lib/validations';
 
 const categories: { value: string; label: string }[] = [
@@ -28,6 +27,10 @@ interface CategoryFilterProps {
 export function CategoryFilter({ selectedCategory, onCategoryChange }: CategoryFilterProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const selectedButtonRef = useRef<HTMLButtonElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
+  const [dragDistance, setDragDistance] = useState(0);
 
   // Auto-scroll to selected category
   useEffect(() => {
@@ -45,35 +48,83 @@ export function CategoryFilter({ selectedCategory, onCategoryChange }: CategoryF
     }
   }, [selectedCategory]);
 
-  const scroll = (direction: 'left' | 'right') => {
-    if (scrollContainerRef.current) {
-      const scrollAmount = 150;
-      const newScrollLeft = scrollContainerRef.current.scrollLeft + 
-        (direction === 'left' ? -scrollAmount : scrollAmount);
-      scrollContainerRef.current.scrollTo({ left: newScrollLeft, behavior: 'smooth' });
+  // Global mouse events for smooth dragging
+  useEffect(() => {
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      if (!isDragging || !scrollContainerRef.current) return;
+      e.preventDefault();
+      const x = e.pageX - scrollContainerRef.current.offsetLeft;
+      const walk = (x - startX) * 2;
+      const newDragDistance = Math.abs(walk);
+      setDragDistance(newDragDistance);
+      scrollContainerRef.current.scrollLeft = scrollLeft - walk;
+    };
+
+    const handleGlobalMouseUp = () => {
+      setIsDragging(false);
+      if (scrollContainerRef.current) {
+        scrollContainerRef.current.style.cursor = 'grab';
+      }
+      // Reset drag distance after a short delay to allow click prevention
+      setTimeout(() => setDragDistance(0), 100);
+    };
+
+    if (isDragging) {
+      document.addEventListener('mousemove', handleGlobalMouseMove);
+      document.addEventListener('mouseup', handleGlobalMouseUp);
     }
+
+    return () => {
+      document.removeEventListener('mousemove', handleGlobalMouseMove);
+      document.removeEventListener('mouseup', handleGlobalMouseUp);
+    };
+  }, [isDragging, startX, scrollLeft]);
+
+  // Drag scrolling functionality
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!scrollContainerRef.current) return;
+    setIsDragging(true);
+    setStartX(e.pageX - scrollContainerRef.current.offsetLeft);
+    setScrollLeft(scrollContainerRef.current.scrollLeft);
+    scrollContainerRef.current.style.cursor = 'grabbing';
+    e.preventDefault(); // Prevent text selection
+  };
+
+  // Touch support for mobile
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (!scrollContainerRef.current) return;
+    setIsDragging(true);
+    setStartX(e.touches[0].pageX - scrollContainerRef.current.offsetLeft);
+    setScrollLeft(scrollContainerRef.current.scrollLeft);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging || !scrollContainerRef.current) return;
+    const x = e.touches[0].pageX - scrollContainerRef.current.offsetLeft;
+    const walk = (x - startX) * 2;
+    scrollContainerRef.current.scrollLeft = scrollLeft - walk;
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
   };
 
   return (
-    <div className="relative flex items-center group w-full">
-      {/* Left scroll button */}
-      <button
-        onClick={() => scroll('left')}
-        className="absolute left-0 z-10 flex items-center justify-center w-6 h-6 bg-background/90 backdrop-blur-sm border rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background"
-        aria-label="Scroll left"
-      >
-        <ChevronLeft className="h-3 w-3" />
-      </button>
-
-      {/* Scrollable categories container */}
+    <div className="relative flex items-center w-full">
+      {/* Drag-scrollable categories container */}
       <div 
         ref={scrollContainerRef}
-        className="flex gap-2 overflow-x-auto scrollbar-hide px-6 w-full"
+        className="flex gap-2 overflow-x-auto scrollbar-hide px-2 w-full cursor-grab select-none"
         style={{
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
-          WebkitScrollbar: { display: 'none' }
+          WebkitScrollbar: { display: 'none' },
+          cursor: isDragging ? 'grabbing' : 'grab'
         }}
+        onMouseDown={handleMouseDown}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       >
         {categories.map((category) => {
           const isSelected = selectedCategory === category.value;
@@ -81,27 +132,26 @@ export function CategoryFilter({ selectedCategory, onCategoryChange }: CategoryF
             <button
               key={category.value}
               ref={isSelected ? selectedButtonRef : null}
-              onClick={() => onCategoryChange(category.value)}
+              onClick={(e) => {
+                // Prevent click if we were dragging (threshold of 5px)
+                if (isDragging || dragDistance > 5) {
+                  e.preventDefault();
+                  return;
+                }
+                onCategoryChange(category.value);
+              }}
               className={`px-3 py-1.5 text-sm rounded-full whitespace-nowrap transition-colors flex-shrink-0 ${
                 isSelected
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-secondary hover:bg-secondary/80 text-secondary-foreground'
               }`}
+              style={{ pointerEvents: isDragging ? 'none' : 'auto' }}
             >
               {category.label}
             </button>
           );
         })}
       </div>
-
-      {/* Right scroll button */}
-      <button
-        onClick={() => scroll('right')}
-        className="absolute right-0 z-10 flex items-center justify-center w-6 h-6 bg-background/90 backdrop-blur-sm border rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background"
-        aria-label="Scroll right"
-      >
-        <ChevronRight className="h-3 w-3" />
-      </button>
     </div>
   );
 }

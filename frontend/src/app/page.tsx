@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { NewsFeed } from '@/components/news/news-feed';
 import { ChatInterface } from '@/components/chat/chat-interface';
@@ -9,6 +9,7 @@ import { TrendingTopics } from '@/components/trending/trending-topics';
 import { CategoryFilter } from '@/components/filters/category-filter';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { SetupGuide } from '@/components/ui/setup-guide';
+import { BookmarksList } from '@/components/bookmarks/bookmarks-list';
 import { type Article } from '@/lib/validations';
 import { articlesApi } from '@/lib/api';
 
@@ -18,6 +19,8 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showSetupGuide, setShowSetupGuide] = useState(false);
+  const [currentView, setCurrentView] = useState<'news' | 'bookmarks'>('news');
+  const chatSectionRef = useRef<HTMLDivElement>(null);
 
   // Check if backend is working by trying to fetch articles
   const { data: healthCheck, isError: healthError } = useQuery({
@@ -39,6 +42,28 @@ export default function Home() {
   const handleArticleSelect = (article: Article) => {
     setSelectedArticle(article);
     setIsChatOpen(true);
+    
+    // Auto-scroll to chat on mobile devices (below lg breakpoint)
+    const scrollToChat = () => {
+      if (typeof window === 'undefined' || !chatSectionRef.current) return;
+      
+      // Check if we're on mobile/tablet (below lg breakpoint: 1024px)
+      const isMobile = window.innerWidth < 1024;
+      if (!isMobile) return;
+      
+      // Get the element position and account for the sticky header
+      const elementTop = chatSectionRef.current.offsetTop;
+      const headerHeight = 120; // Approximate header height with padding
+      const targetPosition = Math.max(0, elementTop - headerHeight);
+      
+      window.scrollTo({
+        top: targetPosition,
+        behavior: 'smooth'
+      });
+    };
+    
+    // Add a delay to allow the chat to open and render first
+    setTimeout(scrollToChat, 150);
   };
 
   return (
@@ -50,38 +75,75 @@ export default function Home() {
             {/* Logo */}
             <h1 className="text-2xl font-bold text-primary flex-shrink-0">TechFlow</h1>
             
-            {/* Category Slider - takes remaining space */}
-            <div className="hidden md:block flex-1 min-w-0">
-              <CategoryFilter 
-                selectedCategory={selectedCategory}
-                onCategoryChange={setSelectedCategory}
-              />
-            </div>
+            {/* Category Slider - takes remaining space (only in news view) */}
+            {currentView === 'news' && (
+              <div className="hidden md:block flex-1 min-w-0">
+                <CategoryFilter 
+                  selectedCategory={selectedCategory}
+                  onCategoryChange={setSelectedCategory}
+                />
+              </div>
+            )}
             
-            {/* Search and Theme - fixed width */}
+            {/* Spacer for bookmarks view to push content right */}
+            {currentView === 'bookmarks' && <div className="flex-1" />}
+            
+            {/* Navigation and Actions - fixed width */}
             <div className="flex items-center gap-4 flex-shrink-0">
               <SearchBar 
                 query={searchQuery}
                 onQueryChange={setSearchQuery}
                 className="hidden sm:block w-64"
+                placeholder={currentView === 'bookmarks' ? 'Search bookmarks...' : 'Search articles...'}
               />
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setCurrentView('news');
+                    setSearchQuery('');
+                  }}
+                  className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                    currentView === 'news' 
+                      ? 'bg-primary text-primary-foreground' 
+                      : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+                  }`}
+                >
+                  News
+                </button>
+                <button
+                  onClick={() => {
+                    setCurrentView('bookmarks');
+                    setSearchQuery('');
+                  }}
+                  className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                    currentView === 'bookmarks' 
+                      ? 'bg-primary text-primary-foreground' 
+                      : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+                  }`}
+                >
+                  Bookmarks
+                </button>
+              </div>
               <ThemeToggle />
             </div>
           </div>
           
           {/* Mobile filters */}
-          <div className="mt-4 md:hidden">
-            <CategoryFilter 
-              selectedCategory={selectedCategory}
-              onCategoryChange={setSelectedCategory}
-            />
-          </div>
+          {currentView === 'news' && (
+            <div className="mt-4 md:hidden">
+              <CategoryFilter 
+                selectedCategory={selectedCategory}
+                onCategoryChange={setSelectedCategory}
+              />
+            </div>
+          )}
           
           {/* Mobile search */}
           <div className="mt-4 sm:hidden">
             <SearchBar 
               query={searchQuery}
               onQueryChange={setSearchQuery}
+              placeholder={currentView === 'bookmarks' ? 'Search bookmarks...' : 'Search articles...'}
             />
           </div>
         </div>
@@ -102,17 +164,24 @@ export default function Home() {
             <TrendingTopics />
           </div>
           
-          {/* News Feed */}
+          {/* Main Content */}
           <div className="lg:col-span-2 order-1 lg:order-2">
-            <NewsFeed 
-              searchQuery={searchQuery}
-              selectedCategory={selectedCategory}
-              onArticleSelect={handleArticleSelect}
-            />
+            {currentView === 'news' ? (
+              <NewsFeed 
+                searchQuery={searchQuery}
+                selectedCategory={selectedCategory}
+                onArticleSelect={handleArticleSelect}
+              />
+            ) : (
+              <BookmarksList 
+                onArticleSelect={handleArticleSelect}
+                searchQuery={searchQuery}
+              />
+            )}
           </div>
           
           {/* Chat Sidebar */}
-          <div className="lg:col-span-1 order-3">
+          <div ref={chatSectionRef} className="lg:col-span-1 order-3">
             <div className="sticky top-24">
               <ChatInterface 
                 selectedArticle={selectedArticle}

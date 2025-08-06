@@ -7,9 +7,10 @@ interface SearchBarProps {
   query: string;
   onQueryChange: (query: string) => void;
   className?: string;
+  placeholder?: string;
 }
 
-export function SearchBar({ query, onQueryChange, className = '' }: SearchBarProps) {
+export function SearchBar({ query, onQueryChange, className = '', placeholder = 'Search tech news...' }: SearchBarProps) {
   const [localQuery, setLocalQuery] = useState(query);
 
   // Sync with external query changes
@@ -55,7 +56,7 @@ export function SearchBar({ query, onQueryChange, className = '' }: SearchBarPro
           type="text"
           value={localQuery}
           onChange={handleInputChange}
-          placeholder="Search tech news..."
+          placeholder={placeholder}
           className="w-full pl-10 pr-4 py-2 border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
         />
       </div>

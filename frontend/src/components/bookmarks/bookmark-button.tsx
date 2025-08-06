@@ -4,18 +4,20 @@ import { useState } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { Bookmark, BookmarkCheck } from 'lucide-react';
 import { bookmarksApi } from '@/lib/api';
+import { useSession } from '@/hooks/use-session';
 
 interface BookmarkButtonProps {
   articleId: number;
-  userId?: string;
 }
 
-export function BookmarkButton({ articleId, userId = 'anonymous' }: BookmarkButtonProps) {
+export function BookmarkButton({ articleId }: BookmarkButtonProps) {
+  const { userId, isLoading: sessionLoading } = useSession();
   const queryClient = useQueryClient();
 
   const { data: bookmarkStatus } = useQuery({
     queryKey: ['bookmark-status', articleId, userId],
     queryFn: () => bookmarksApi.checkBookmark(articleId, userId),
+    enabled: !sessionLoading && !!userId,
   });
 
   const createBookmarkMutation = useMutation({
@@ -35,7 +37,7 @@ export function BookmarkButton({ articleId, userId = 'anonymous' }: BookmarkButt
   });
 
   const isBookmarked = bookmarkStatus?.is_bookmarked;
-  const isLoading = createBookmarkMutation.isPending || deleteBookmarkMutation.isPending;
+  const isLoading = sessionLoading || createBookmarkMutation.isPending || deleteBookmarkMutation.isPending;
 
   const handleToggleBookmark = () => {
     if (isBookmarked) {
