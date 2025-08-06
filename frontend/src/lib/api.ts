@@ -10,7 +10,14 @@ import {
   type SearchRequest
 } from '@/lib/validations';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://appify.australsolar.click';
+
+// Debug logging to verify the correct URL is being used
+console.log('API Configuration:', {
+  envUrl: process.env.NEXT_PUBLIC_API_URL,
+  finalUrl: API_BASE_URL,
+  isProduction: process.env.NODE_ENV === 'production'
+});
 
 const api = axios.create({
   baseURL: API_BASE_URL,
