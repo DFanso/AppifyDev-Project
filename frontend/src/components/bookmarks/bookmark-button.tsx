@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { Bookmark, BookmarkCheck } from 'lucide-react';
 import { bookmarksApi } from '@/lib/api';

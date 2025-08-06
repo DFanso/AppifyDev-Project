@@ -4,9 +4,8 @@ import { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Send, MessageCircle, X, Sparkles } from 'lucide-react';
 import { chatApi } from '@/lib/api';
-import { type Article, type ChatHistory } from '@/lib/validations';
+import { type Article } from '@/lib/validations';
 import { LoadingSpinner } from '../ui/loading-spinner';
-import { ErrorDisplay } from '../ui/error-display';
 import { useSession } from '@/hooks/use-session';
 
 interface ChatInterfaceProps {
@@ -36,7 +35,7 @@ export function ChatInterface({ selectedArticle, isOpen, onClose }: ChatInterfac
       queryClient.invalidateQueries({ queryKey: ['chat-history', userId] });
       setMessage('');
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       console.error('Chat error:', error);
       // You could show a toast or error message here
     },
@@ -185,7 +184,8 @@ export function ChatInterface({ selectedArticle, isOpen, onClose }: ChatInterfac
               <div className="text-sm">
                 <p className="font-medium text-destructive mb-1">Failed to send message</p>
                 <p className="text-muted-foreground">
-                  {(sendMessageMutation.error as any)?.response?.status === 500 
+                  {sendMessageMutation.error && 'response' in sendMessageMutation.error && 
+                   (sendMessageMutation.error.response as { status?: number })?.status === 500 
                     ? "The AI service is currently unavailable. Please check that the OpenAI API key is configured in the backend."
                     : "Unable to send message. Please try again."}
                 </p>

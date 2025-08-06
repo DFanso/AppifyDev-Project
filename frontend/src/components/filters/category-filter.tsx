@@ -1,7 +1,6 @@
 'use client';
 
 import { useRef, useEffect, useState } from 'react';
-import { type Category } from '@/lib/validations';
 
 const categories: { value: string; label: string }[] = [
   { value: 'all', label: 'All' },
@@ -30,7 +29,6 @@ export function CategoryFilter({ selectedCategory, onCategoryChange }: CategoryF
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
   const [scrollLeft, setScrollLeft] = useState(0);
-  const [dragDistance, setDragDistance] = useState(0);
   const [hasActuallyDragged, setHasActuallyDragged] = useState(false);
 
   // Auto-scroll to selected category
@@ -57,7 +55,6 @@ export function CategoryFilter({ selectedCategory, onCategoryChange }: CategoryF
       const x = e.pageX - scrollContainerRef.current.offsetLeft;
       const walk = (x - startX) * 2;
       const newDragDistance = Math.abs(walk);
-      setDragDistance(newDragDistance);
       
       // Only mark as actually dragged if we've moved more than 3px
       if (newDragDistance > 3) {
@@ -74,7 +71,6 @@ export function CategoryFilter({ selectedCategory, onCategoryChange }: CategoryF
       }
       // Reset drag states after a short delay
       setTimeout(() => {
-        setDragDistance(0);
         setHasActuallyDragged(false);
       }, 50); // Shorter delay for more responsive clicks
     };
@@ -95,7 +91,6 @@ export function CategoryFilter({ selectedCategory, onCategoryChange }: CategoryF
     if (!scrollContainerRef.current) return;
     setIsDragging(true);
     setHasActuallyDragged(false); // Reset drag state
-    setDragDistance(0);
     setStartX(e.pageX - scrollContainerRef.current.offsetLeft);
     setScrollLeft(scrollContainerRef.current.scrollLeft);
     scrollContainerRef.current.style.cursor = 'grabbing';
@@ -107,7 +102,6 @@ export function CategoryFilter({ selectedCategory, onCategoryChange }: CategoryF
     if (!scrollContainerRef.current) return;
     setIsDragging(true);
     setHasActuallyDragged(false);
-    setDragDistance(0);
     setStartX(e.touches[0].pageX - scrollContainerRef.current.offsetLeft);
     setScrollLeft(scrollContainerRef.current.scrollLeft);
   };
@@ -117,7 +111,6 @@ export function CategoryFilter({ selectedCategory, onCategoryChange }: CategoryF
     const x = e.touches[0].pageX - scrollContainerRef.current.offsetLeft;
     const walk = (x - startX) * 2;
     const newDragDistance = Math.abs(walk);
-    setDragDistance(newDragDistance);
     
     // Mark as dragged if moved more than 3px
     if (newDragDistance > 3) {
@@ -131,8 +124,7 @@ export function CategoryFilter({ selectedCategory, onCategoryChange }: CategoryF
     setIsDragging(false);
     // Reset drag states after a short delay
     setTimeout(() => {
-      setDragDistance(0);
-      setHasActuallyDragged(false);
+        setHasActuallyDragged(false);
     }, 50);
   };
 
@@ -145,9 +137,8 @@ export function CategoryFilter({ selectedCategory, onCategoryChange }: CategoryF
         style={{
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
-          WebkitScrollbar: { display: 'none' },
           cursor: isDragging ? 'grabbing' : 'grab'
-        }}
+        } as React.CSSProperties}
         onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}

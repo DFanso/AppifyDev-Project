@@ -53,8 +53,8 @@ export function BookmarksList({ onArticleSelect, searchQuery = '' }: BookmarksLi
     return (
       article.title.toLowerCase().includes(query) ||
       article.content?.toLowerCase().includes(query) ||
-      article.source.toLowerCase().includes(query) ||
-      article.category.toLowerCase().includes(query) ||
+      article.source?.toLowerCase().includes(query) ||
+      article.category?.toLowerCase().includes(query) ||
       article.author?.toLowerCase().includes(query)
     );
   }) || [];
@@ -81,7 +81,7 @@ export function BookmarksList({ onArticleSelect, searchQuery = '' }: BookmarksLi
         </div>
         <h3 className="font-semibold text-lg mb-2">No matching bookmarks</h3>
         <p className="text-muted-foreground">
-          No bookmarked articles match your search for "{searchQuery}".
+          No bookmarked articles match your search for &ldquo;{searchQuery}&rdquo;.
         </p>
       </div>
     );
@@ -132,10 +132,18 @@ export function BookmarksList({ onArticleSelect, searchQuery = '' }: BookmarksLi
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 space-y-3">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <span className="font-medium">{article.source}</span>
-                    <span>•</span>
-                    <span>{article.category}</span>
-                    <span>•</span>
+                    {article.source && (
+                      <>
+                        <span className="font-medium">{article.source}</span>
+                        <span>•</span>
+                      </>
+                    )}
+                    {article.category && (
+                      <>
+                        <span>{article.category}</span>
+                        <span>•</span>
+                      </>
+                    )}
                     <span>
                       Bookmarked {formatDistanceToNow(new Date(bookmark.created_at))} ago
                     </span>
