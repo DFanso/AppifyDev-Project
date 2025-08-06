@@ -40,9 +40,9 @@ export function ArticleCard({ article, onClick }: ArticleCardProps) {
             {article.title}
           </h3>
           
-          {article.summary && (
+          {article.content && (
             <p className="text-sm text-muted-foreground line-clamp-3">
-              {article.summary}
+              {article.content.length > 200 ? `${article.content.substring(0, 200)}...` : article.content}
             </p>
           )}
           

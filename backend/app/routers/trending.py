@@ -12,26 +12,153 @@ from ..schemas import TrendingTopicResponse, ArticleResponse
 router = APIRouter()
 
 def extract_keywords(text: str) -> List[str]:
-    """Extract keywords from text for trending analysis"""
+    """Extract meaningful tech-focused keywords from text"""
     if not text:
         return []
     
-    # Convert to lowercase and extract words
-    words = re.findall(r'\b[a-zA-Z]{3,}\b', text.lower())
-    
-    # Common stop words to filter out
+    # Comprehensive stop words list for better filtering
     stop_words = {
+        # Articles, prepositions, conjunctions
         'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with',
         'by', 'from', 'up', 'about', 'into', 'through', 'during', 'before',
-        'after', 'above', 'below', 'between', 'among', 'this', 'that', 'these',
-        'those', 'will', 'would', 'could', 'should', 'may', 'might', 'must',
-        'can', 'are', 'was', 'were', 'been', 'have', 'has', 'had', 'did', 'does'
+        'after', 'above', 'below', 'between', 'among', 'within', 'without',
+        
+        # Pronouns and determiners
+        'this', 'that', 'these', 'those', 'they', 'them', 'their', 'there',
+        'here', 'where', 'when', 'what', 'which', 'who', 'whom', 'whose', 'why',
+        'how', 'your', 'you', 'yours', 'our', 'ours', 'his', 'her', 'hers',
+        'its', 'their', 'theirs', 'some', 'any', 'all', 'each', 'every',
+        'both', 'either', 'neither', 'one', 'two', 'three', 'first', 'second',
+        'other', 'another', 'such', 'same', 'different', 'various', 'several',
+        
+        # Modal and auxiliary verbs
+        'will', 'would', 'could', 'should', 'may', 'might', 'must', 'can',
+        'are', 'was', 'were', 'been', 'have', 'has', 'had', 'did', 'does',
+        'do', 'done', 'being', 'is', 'am', 'are', 'was', 'were', 'get', 'got',
+        'give', 'given', 'take', 'taken', 'make', 'made', 'come', 'came',
+        'go', 'went', 'gone', 'see', 'seen', 'know', 'known', 'think',
+        'thought', 'find', 'found', 'tell', 'told', 'ask', 'asked', 'try',
+        'tried', 'seem', 'seemed', 'feel', 'felt', 'leave', 'left', 'put',
+        
+        # Common adjectives and adverbs
+        'more', 'most', 'less', 'least', 'much', 'many', 'few', 'little',
+        'good', 'better', 'best', 'bad', 'worse', 'worst', 'big', 'bigger',
+        'small', 'smaller', 'large', 'larger', 'great', 'greater', 'high',
+        'higher', 'low', 'lower', 'long', 'longer', 'short', 'shorter',
+        'new', 'newer', 'old', 'older', 'young', 'younger', 'early', 'earlier',
+        'late', 'later', 'last', 'next', 'previous', 'current', 'recent',
+        'important', 'main', 'major', 'minor', 'real', 'right', 'wrong',
+        'true', 'false', 'sure', 'certain', 'possible', 'impossible',
+        'available', 'free', 'open', 'close', 'closed', 'full', 'empty',
+        'easy', 'hard', 'difficult', 'simple', 'complex', 'clear', 'dark',
+        'light', 'heavy', 'quick', 'fast', 'slow', 'strong', 'weak',
+        
+        # Generic tech words that aren't meaningful
+        'using', 'used', 'use', 'uses', 'way', 'ways', 'time', 'times',
+        'work', 'works', 'working', 'worked', 'thing', 'things', 'stuff',
+        'part', 'parts', 'kind', 'type', 'types', 'sort', 'example',
+        'examples', 'case', 'cases', 'point', 'points', 'place', 'places',
+        'end', 'ends', 'start', 'starts', 'beginning', 'middle', 'side',
+        'sides', 'top', 'bottom', 'left', 'right', 'front', 'back',
+        'inside', 'outside', 'around', 'near', 'far', 'away', 'together',
+        'alone', 'only', 'just', 'even', 'still', 'yet', 'already',
+        'always', 'never', 'sometimes', 'often', 'usually', 'probably',
+        'perhaps', 'maybe', 'definitely', 'certainly', 'exactly', 'quite',
+        'very', 'too', 'so', 'such', 'really', 'actually', 'basically',
+        'generally', 'specifically', 'particularly', 'especially', 'mainly',
+        'mostly', 'partly', 'completely', 'totally', 'fully', 'nearly',
+        'almost', 'hardly', 'barely', 'rather', 'pretty', 'fairly',
+        
+        # Common verbs that don't add meaning
+        'said', 'say', 'says', 'saying', 'call', 'called', 'calling',
+        'look', 'looked', 'looking', 'looks', 'like', 'liked', 'liking',
+        'want', 'wanted', 'wanting', 'need', 'needed', 'needing',
+        'help', 'helped', 'helping', 'show', 'showed', 'showing',
+        'turn', 'turned', 'turning', 'keep', 'kept', 'keeping',
+        'let', 'lets', 'letting', 'play', 'played', 'playing',
+        'move', 'moved', 'moving', 'live', 'lived', 'living',
+        'bring', 'brought', 'bringing', 'happen', 'happened', 'happening',
+        'write', 'wrote', 'written', 'writing', 'read', 'reading',
+        'hear', 'heard', 'hearing', 'listen', 'listened', 'listening',
+        'talk', 'talked', 'talking', 'speak', 'spoke', 'speaking',
+        'understand', 'understood', 'understanding', 'mean', 'meant', 'meaning',
+        'include', 'included', 'including', 'follow', 'followed', 'following',
+        'change', 'changed', 'changing', 'become', 'became', 'becoming',
+        'seem', 'seems', 'seemed', 'seeming', 'appear', 'appeared', 'appearing',
+        'continue', 'continued', 'continuing', 'remain', 'remained', 'remaining',
+        'stay', 'stayed', 'staying', 'stop', 'stopped', 'stopping',
+        'begin', 'began', 'beginning', 'finish', 'finished', 'finishing'
     }
     
-    # Filter out stop words and keep relevant terms
-    keywords = [word for word in words if word not in stop_words and len(word) > 3]
+    # Extract potential keywords (4+ characters, letters/numbers/hyphens)
+    potential_keywords = re.findall(r'\b[A-Za-z][A-Za-z0-9\-]{3,}\b', text)
+    
+    # Filter and process keywords
+    keywords = []
+    for word in potential_keywords:
+        word_lower = word.lower()
+        
+        # Skip stop words
+        if word_lower in stop_words:
+            continue
+        
+        # Skip pure numbers
+        if word.isdigit():
+            continue
+            
+        # Keep capitalized words (likely proper nouns/tech terms)
+        if word[0].isupper():
+            keywords.append(word)
+        # Keep tech-looking terms (contain numbers/hyphens)
+        elif any(char.isdigit() or char == '-' for char in word):
+            keywords.append(word.upper() if len(word) <= 6 else word.title())
+        # Keep long words that might be technical
+        elif len(word) >= 6:
+            keywords.append(word.title())
     
     return keywords
+
+def extract_tech_phrases(text: str) -> List[str]:
+    """Extract multi-word tech phrases and company names"""
+    if not text:
+        return []
+    
+    phrases = []
+    
+    # Common 2-3 word tech phrases
+    tech_patterns = [
+        r'\b(artificial intelligence|machine learning|deep learning|neural network|natural language|computer vision|data science|cloud computing|edge computing|quantum computing)\b',
+        r'\b(software development|web development|mobile development|app development|game development|software engineering)\b',
+        r'\b(cyber security|information security|network security|data privacy|data protection|identity management)\b',
+        r'\b(user experience|user interface|user research|design thinking|design system|design patterns)\b',
+        r'\b(business intelligence|data analytics|data mining|big data|data warehouse|data lake)\b',
+        r'\b(internet of things|augmented reality|virtual reality|mixed reality|extended reality)\b',
+        r'\b(social media|social network|social platform|content management|digital marketing)\b',
+        r'\b(open source|version control|continuous integration|continuous deployment|agile development)\b',
+        r'\b(api integration|api management|microservices|serverless|container orchestration)\b',
+        r'\b(digital transformation|automation|process automation|robotic process|workflow automation)\b'
+    ]
+    
+    # Company and product patterns
+    company_patterns = [
+        r'\b(Apple|Google|Microsoft|Amazon|Meta|Facebook|Tesla|Netflix|Spotify|Adobe|Oracle|Salesforce)\b',
+        r'\b(OpenAI|ChatGPT|GPT-\d+|Claude|Gemini|Anthropic|DeepMind|Midjourney)\b',
+        r'\b(iPhone|iPad|MacBook|Windows|Android|iOS|Chrome|Safari|Firefox)\b',
+        r'\b(AWS|Azure|Google Cloud|Firebase|Vercel|Netlify|Heroku|Docker|Kubernetes)\b',
+        r'\b(React|Vue|Angular|Node\.js|Python|JavaScript|TypeScript|Java|Swift|Kotlin)\b',
+        r'\b(GitHub|GitLab|Stack Overflow|Reddit|Twitter|LinkedIn|TikTok|Instagram|YouTube)\b'
+    ]
+    
+    all_patterns = tech_patterns + company_patterns
+    
+    for pattern in all_patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        for match in matches:
+            if isinstance(match, tuple):
+                match = ' '.join(match)
+            phrases.append(match.title())
+    
+    return phrases
 
 @router.get("/topics", response_model=List[TrendingTopicResponse])
 async def get_trending_topics(
@@ -49,23 +176,31 @@ async def get_trending_topics(
     if not recent_articles:
         return []
     
-    # Extract and count keywords
+    # Extract and count keywords with tech focus
     keyword_counter = Counter()
     article_keywords = {}
     
     for article in recent_articles:
-        # Extract keywords from title and content
+        # Extract both single keywords and tech phrases
         title_keywords = extract_keywords(article.title)
         content_keywords = extract_keywords(article.content or "")
+        title_phrases = extract_tech_phrases(article.title)
+        content_phrases = extract_tech_phrases(article.content or "")
         
-        # Combine keywords (title keywords get higher weight)
-        all_keywords = title_keywords * 3 + content_keywords
+        # Prioritize tech phrases (highest weight), then title keywords, then content keywords
+        all_terms = (
+            title_phrases * 5 +        # Tech phrases in title get highest weight
+            content_phrases * 3 +      # Tech phrases in content get high weight
+            title_keywords * 2 +       # Single keywords in title get medium weight  
+            content_keywords           # Single keywords in content get base weight
+        )
         
-        # Store keywords for this article
-        article_keywords[article.id] = set(title_keywords + content_keywords)
+        # Store all terms for this article
+        all_article_terms = set(title_keywords + content_keywords + title_phrases + content_phrases)
+        article_keywords[article.id] = all_article_terms
         
         # Update global counter
-        keyword_counter.update(all_keywords)
+        keyword_counter.update(all_terms)
     
     # Get top trending keywords
     trending_keywords = keyword_counter.most_common(limit)

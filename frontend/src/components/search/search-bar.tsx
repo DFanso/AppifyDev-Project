@@ -12,22 +12,33 @@ interface SearchBarProps {
 export function SearchBar({ query, onQueryChange, className = '' }: SearchBarProps) {
   const [localQuery, setLocalQuery] = useState(query);
 
+  // Sync with external query changes
+  useEffect(() => {
+    setLocalQuery(query);
+  }, [query]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (localQuery.trim()) {
-      onQueryChange(localQuery.trim());
+    const trimmedQuery = localQuery.trim();
+    if (trimmedQuery !== query) {
+      onQueryChange(trimmedQuery);
     }
   };
 
   // Debounce search queries
   useEffect(() => {
+    const trimmedQuery = localQuery.trim();
+    
+    // Don't trigger search if the query hasn't actually changed
+    if (trimmedQuery === query) return;
+    
     const timeoutId = setTimeout(() => {
-      if (localQuery.trim().length >= 2) {
-        onQueryChange(localQuery.trim());
-      } else if (localQuery.trim().length === 0 && query !== '') {
+      if (trimmedQuery.length >= 2) {
+        onQueryChange(trimmedQuery);
+      } else if (trimmedQuery.length === 0 && query !== '') {
         onQueryChange(''); // Clear search when input is empty
       }
-    }, 500);
+    }, 800); // Increased debounce time to reduce flickering
 
     return () => clearTimeout(timeoutId);
   }, [localQuery, onQueryChange, query]);
