@@ -1,171 +1,67 @@
-name: Deploy to VPS
+name: Deploy to VPS 
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-  workflow_dispatch:
+    branches:
+      - main
 
 jobs:
   deploy:
+    name: Deploy with Rsync
     runs-on: ubuntu-latest
-    
+
     steps:
-    - name: Checkout code
+    - name: Checkout
       uses: actions/checkout@v4
-      
-    - name: Setup SSH key
+
+    - name: Create environment files
       run: |
-        mkdir -p ~/.ssh
-        echo "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
-        
-    - name: Install rsync
-      run: sudo apt-get update && sudo apt-get install -y rsync
-      
-    - name: Create deployment directory on VPS
-      run: |
-        ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "mkdir -p /home/${{ secrets.VPS_USER }}/tech-news-app"
-        
-    - name: Sync project files to VPS using rsync over SSH
-      run: |
-        rsync -avz --delete \
-          --exclude='.git' \
-          --exclude='node_modules' \
-          --exclude='__pycache__' \
-          --exclude='.env' \
-          --exclude='*.log' \
-          --exclude='.DS_Store' \
-          --exclude='tech_news.db' \
-          -e "ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no" \
-          ./ ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/home/${{ secrets.VPS_USER }}/tech-news-app/
-          
-    - name: Create .env file on VPS
-      run: |
-        ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
-        cd /home/${{ secrets.VPS_USER }}/tech-news-app
-        cat > .env << 'ENVEOF'
-        # AI Configuration
+        echo "Creating .env file..."
+        cat > .env << EOF
         OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
-        
-        # Database
-        DATABASE_URL=sqlite:///./tech_news.db
-        
-        # Redis Cache
         REDIS_URL=${{ secrets.REDIS_URL }}
-        
-        # API Configuration
-        API_HOST=0.0.0.0
-        API_PORT=8000
-        FRONTEND_URL=http://localhost:3000
-        
-        # News Processing
-        MAX_ARTICLES_PER_BATCH=50
-        RSS_TIMEOUT=30
-        
-        # Production settings
-        ENVIRONMENT=production
-        ENVEOF
         EOF
-        
-    - name: Install Docker and Docker Compose on VPS (if not exists)
+
+    - name: Install sshpass for password authentication
+      run: sudo apt-get update && sudo apt-get install -y sshpass
+
+    - name: Deploy via Rsync with Password
       run: |
-        ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
-        # Check if Docker is installed
-        if ! command -v docker &> /dev/null; then
-          echo "Installing Docker..."
-          curl -fsSL https://get.docker.com -o get-docker.sh
-          sudo sh get-docker.sh
-          sudo usermod -aG docker $USER
-        fi
-        
-        # Check if Docker Compose is installed
-        if ! command -v docker-compose &> /dev/null; then
-          echo "Installing Docker Compose..."
-          sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-          sudo chmod +x /usr/local/bin/docker-compose
-        fi
-        EOF
-        
-    - name: Stop existing containers and deploy
+        # Use sshpass for password authentication with rsync
+        export SSHPASS="${{ secrets.VPS_PASSWORD }}"
+        rsync -avzr --delete \
+          --exclude=node_modules \
+          --exclude=.git \
+          --exclude=.github \
+          --exclude=frontend \
+          --timeout=600 \
+          -e "sshpass -e ssh -o ConnectTimeout=60 -o ServerAliveInterval=30 -o ServerAliveCountMax=10 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p 2287" \
+          ./ ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }}:~/appify/
+
+    - name: Build and Deploy Docker Compose
       run: |
-        ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
-        cd /home/${{ secrets.VPS_USER }}/tech-news-app
+        export SSHPASS="${{ secrets.VPS_PASSWORD }}"
+        sshpass -e ssh -o ConnectTimeout=60 -o ServerAliveInterval=30 -o ServerAliveCountMax=10 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p 2287 ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }} '
+        cd ~/appify
+        echo "Current directory: $(pwd)"
+        echo "Listing files:"
+        ls -la
         
-        # Stop and remove existing containers
-        docker-compose down --remove-orphans || true
+        echo "Force stopping and removing existing container..."
+        sudo docker-compose down
         
-        # Remove old images to free space
-        docker system prune -f || true
+        sudo docker system prune -af --volumes
+        sudo docker builder prune -af
+        sudo docker-compose build
+        sudo docker-compose up -d --build
+
+        sudo docker-compose ps
         
-        # Build and start new containers
-        docker-compose up --build -d
+        echo "Checking container status..."
+        sudo docker ps | grep appify-app || echo "Container not running"
         
-        # Wait for services to be ready
-        echo "Waiting for services to start..."
-        sleep 30
+        echo "Checking container logs (last 10 lines)..."
+        sudo docker logs --tail 10 appify-app || echo "No logs available"
         
-        # Check service status
-        docker-compose ps
-        
-        # Check if API is responding
-        for i in {1..10}; do
-          if curl -f http://localhost:8000/health &> /dev/null; then
-            echo "API is healthy!"
-            break
-          else
-            echo "Waiting for API to be ready... (attempt $i/10)"
-            sleep 10
-          fi
-        done
-        EOF
-        
-    - name: Run initial data fetch
-      run: |
-        ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
-        cd /home/${{ secrets.VPS_USER }}/tech-news-app
-        
-        # Run initial news fetch in the background
-        docker-compose exec -T api python scripts/fetch_news.py &
-        
-        echo "Initial news fetch started in background"
-        EOF
-        
-    - name: Setup log rotation and monitoring
-      run: |
-        ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
-        # Create log rotation config
-        sudo tee /etc/logrotate.d/tech-news-app > /dev/null << 'LOGEOF'
-        /home/${{ secrets.VPS_USER }}/tech-news-app/logs/*.log {
-            daily
-            missingok
-            rotate 7
-            compress
-            delaycompress
-            notifempty
-            sharedscripts
-        }
-        LOGEOF
-        
-        # Create cron job for news fetching every 30 minutes
-        (crontab -l 2>/dev/null | grep -v "fetch_news.py"; echo "*/30 * * * * cd /home/${{ secrets.VPS_USER }}/tech-news-app && docker-compose exec -T api python scripts/fetch_news.py >> /home/${{ secrets.VPS_USER }}/tech-news-app/logs/cron.log 2>&1") | crontab -
-        
-        # Create logs directory
-        mkdir -p /home/${{ secrets.VPS_USER }}/tech-news-app/logs
-        EOF
-        
-    - name: Display deployment status
-      run: |
-        echo "🚀 Deployment completed!"
-        echo "📊 Service Status:"
-        ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "cd /home/${{ secrets.VPS_USER }}/tech-news-app && docker-compose ps"
-        echo ""
-        echo "🔗 Access your application:"
-        echo "   Backend API: http://${{ secrets.VPS_HOST }}:8000"
-        echo "   API Docs: http://${{ secrets.VPS_HOST }}:8000/docs"
-        echo "   Redis: ${{ secrets.VPS_HOST }}:6379"
-        echo ""
-        echo "📝 Logs can be viewed with:"
-        echo "   docker-compose logs -f"
+        echo "Deployment completed successfully!"
+        ' 
