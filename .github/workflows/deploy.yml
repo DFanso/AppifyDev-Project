@@ -30,7 +30,7 @@ jobs:
             cp -r . /appify/
             echo "Copied files to /appify"
           else
-            mkdir -p /appify
+            sudo mkdir -p /appify
             cp .env /appify/.env
             cp -r . /appify/
           fi
