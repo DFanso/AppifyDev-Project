@@ -91,7 +91,7 @@ jobs:
         
     - name: Stop existing containers and deploy
       run: |
-        sshpass -p "${{ secrets.VPS_PASSWORD }}" ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
+        ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
         cd /home/${{ secrets.VPS_USER }}/tech-news-app
         
         # Stop and remove existing containers
@@ -124,7 +124,7 @@ jobs:
         
     - name: Run initial data fetch
       run: |
-        sshpass -p "${{ secrets.VPS_PASSWORD }}" ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
+        ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
         cd /home/${{ secrets.VPS_USER }}/tech-news-app
         
         # Run initial news fetch in the background
@@ -135,7 +135,7 @@ jobs:
         
     - name: Setup log rotation and monitoring
       run: |
-        sshpass -p "${{ secrets.VPS_PASSWORD }}" ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
+        ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
         # Create log rotation config
         sudo tee /etc/logrotate.d/tech-news-app > /dev/null << 'LOGEOF'
         /home/${{ secrets.VPS_USER }}/tech-news-app/logs/*.log {
@@ -160,7 +160,7 @@ jobs:
       run: |
         echo "🚀 Deployment completed!"
         echo "📊 Service Status:"
-        sshpass -p "${{ secrets.VPS_PASSWORD }}" ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "cd /home/${{ secrets.VPS_USER }}/tech-news-app && docker-compose ps"
+        ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "cd /home/${{ secrets.VPS_USER }}/tech-news-app && docker-compose ps"
         echo ""
         echo "🔗 Access your application:"
         echo "   Backend API: http://${{ secrets.VPS_HOST }}:8000"
