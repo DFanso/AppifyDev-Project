@@ -24,8 +24,16 @@ jobs:
 
       - name: Sync project files to VPS
         run: |
-          cp .env /appify/.env
-          cp -r . /appify/
+          if [ -d "/appify" ]; then
+            echo "Directory /appify already exists"
+            cp .env /appify/.env
+            cp -r . /appify/
+            echo "Copied files to /appify"
+          else
+            mkdir -p /appify
+            cp .env /appify/.env
+            cp -r . /appify/
+          fi
         shell: bash
 
       - name: Deploy on VPS with Docker Compose
