@@ -38,7 +38,7 @@ jobs:
             -e "ssh -i ~/.ssh/id_rsa" \
             --exclude=".git/" \
             --exclude=".github/" \
-            . ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/appify
+            . "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/appify"
         shell: bash
 
       - name: Deploy on VPS with Docker Compose
