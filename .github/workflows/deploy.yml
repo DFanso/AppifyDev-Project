@@ -35,7 +35,7 @@ jobs:
       - name: Sync project files to VPS
         run: |
           rsync -avz --delete \
-            -e "ssh -i ~/.ssh/id_rsa" \
+            -e "ssh -v -i ~/.ssh/id_rsa" \
             --exclude=".git/" \
             --exclude=".github/" \
             . "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/appify"
@@ -43,13 +43,13 @@ jobs:
 
       - name: Deploy on VPS with Docker Compose
         run: |
-          ssh -i ~/.ssh/id_rsa ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} '
+          ssh -v -i ~/.ssh/id_rsa ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} '
           set -e
           cd /appify
-          sudo docker-compose down
-          sudo docker-compose -f docker-compose.yml up -d --build
+          docker-compose down
+          docker-compose -f docker-compose.yml up -d --build
           echo "Pruning old Docker images..."
-          sudo docker image prune -af
+          docker image prune -af
           echo "Deployment successful!"
           '
         shell: bash
