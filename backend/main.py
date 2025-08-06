@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import uvicorn
@@ -31,40 +31,42 @@ app = FastAPI(
 # Configure allowed origins based on environment
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 
-if ENVIRONMENT == "production":
-    # Production: Only allow specific origins
-    allowed_origins = [
-        "https://appify-dev-project.vercel.app",
-        os.getenv("FRONTEND_URL", "https://appify-dev-project.vercel.app")
-    ]
-    # Remove any None values and duplicates
-    allowed_origins = list(set([url for url in allowed_origins if url]))
-else:
-    # Development: Allow common development origins
-    allowed_origins = [
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
+# Always allow the specific frontend domain
+allowed_origins = [
+    "https://appify-app.australsolar.click",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+
+# Add environment-specific origins
+frontend_url = os.getenv("FRONTEND_URL")
+if frontend_url and frontend_url not in allowed_origins:
+    allowed_origins.append(frontend_url)
+
+# For development, be more permissive
+if ENVIRONMENT != "production":
+    allowed_origins.extend([
         "http://localhost:3001",
         "https://appify-dev-project.vercel.app"
-    ]
+    ])
+
+# Remove duplicates
+allowed_origins = list(set([url for url in allowed_origins if url]))
+
+# Debug logging
+print(f"CORS Configuration:")
+print(f"Environment: {ENVIRONMENT}")
+print(f"Allowed Origins: {allowed_origins}")
+print(f"Frontend URL from env: {os.getenv('FRONTEND_URL')}")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,  # Allow credentials for session management
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"],
-    allow_headers=[
-        "accept",
-        "accept-encoding",
-        "authorization",
-        "content-type",
-        "dnt",
-        "origin",
-        "user-agent",
-        "x-csrftoken",
-        "x-requested-with",
-    ],
+    allow_headers=["*"],  # Simplified to allow all headers
     expose_headers=["*"],
+    max_age=3600,  # Cache preflight requests for 1 hour
 )
 
 # Include routers
@@ -88,12 +90,27 @@ async def cors_debug():
     return {
         "environment": ENVIRONMENT,
         "allowed_origins": allowed_origins,
+        "frontend_url_env": os.getenv("FRONTEND_URL"),
         "cors_settings": {
             "allow_credentials": True,
             "allow_methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"],
-            "allow_headers": ["accept", "accept-encoding", "authorization", "content-type", "dnt", "origin", "user-agent", "x-csrftoken", "x-requested-with"],
+            "allow_headers": ["*"],
         }
     }
+
+@app.options("/{path:path}")
+async def options_handler(request: Request, response: Response):
+    """Handle preflight OPTIONS requests for all paths"""
+    origin = request.headers.get("origin")
+    
+    if origin in allowed_origins:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH, HEAD"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+        response.headers["Access-Control-Max-Age"] = "3600"
+    
+    return Response(status_code=204)
 
 if __name__ == "__main__":
     uvicorn.run(
