@@ -267,7 +267,4 @@ cython_debug/
 .uv/
 uv.lock
 
-# Docker
-.dockerignore
-Dockerfile*
-docker-compose*.yml
+
