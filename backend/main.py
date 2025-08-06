@@ -98,19 +98,8 @@ async def cors_debug():
         }
     }
 
-@app.options("/{path:path}")
-async def options_handler(request: Request, response: Response):
-    """Handle preflight OPTIONS requests for all paths"""
-    origin = request.headers.get("origin")
-    
-    if origin in allowed_origins:
-        response.headers["Access-Control-Allow-Origin"] = origin
-        response.headers["Access-Control-Allow-Credentials"] = "true"
-        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH, HEAD"
-        response.headers["Access-Control-Allow-Headers"] = "*"
-        response.headers["Access-Control-Max-Age"] = "3600"
-    
-    return Response(status_code=204)
+# Remove the manual OPTIONS handler as it's interfering with the router endpoints
+# The CORSMiddleware should handle all CORS headers automatically
 
 if __name__ == "__main__":
     uvicorn.run(
