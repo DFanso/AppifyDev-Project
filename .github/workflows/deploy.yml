@@ -24,8 +24,8 @@ jobs:
 
       - name: Sync project files to VPS
         run: |
-          cp .env /appify/.env
-          cp -r . /appify/
+          sudo cp .env /appify/.env
+          sudo cp -r . /appify/
         shell: bash
 
       - name: Deploy on VPS with Docker Compose
