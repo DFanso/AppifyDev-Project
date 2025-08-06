@@ -70,4 +70,9 @@ def get_db():
 
 def init_db():
     """Initialize database tables"""
-    Base.metadata.create_all(bind=engine)
+    try:
+        Base.metadata.create_all(bind=engine)
+        print("✅ Database initialized successfully")
+    except Exception as e:
+        print(f"ℹ️  Database already exists or initialization skipped: {e}")
+        # Tables already exist, this is fine

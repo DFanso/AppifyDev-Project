@@ -31,6 +31,7 @@ export function CategoryFilter({ selectedCategory, onCategoryChange }: CategoryF
   const [startX, setStartX] = useState(0);
   const [scrollLeft, setScrollLeft] = useState(0);
   const [dragDistance, setDragDistance] = useState(0);
+  const [hasActuallyDragged, setHasActuallyDragged] = useState(false);
 
   // Auto-scroll to selected category
   useEffect(() => {
@@ -57,6 +58,12 @@ export function CategoryFilter({ selectedCategory, onCategoryChange }: CategoryF
       const walk = (x - startX) * 2;
       const newDragDistance = Math.abs(walk);
       setDragDistance(newDragDistance);
+      
+      // Only mark as actually dragged if we've moved more than 3px
+      if (newDragDistance > 3) {
+        setHasActuallyDragged(true);
+      }
+      
       scrollContainerRef.current.scrollLeft = scrollLeft - walk;
     };
 
@@ -65,8 +72,11 @@ export function CategoryFilter({ selectedCategory, onCategoryChange }: CategoryF
       if (scrollContainerRef.current) {
         scrollContainerRef.current.style.cursor = 'grab';
       }
-      // Reset drag distance after a short delay to allow click prevention
-      setTimeout(() => setDragDistance(0), 100);
+      // Reset drag states after a short delay
+      setTimeout(() => {
+        setDragDistance(0);
+        setHasActuallyDragged(false);
+      }, 50); // Shorter delay for more responsive clicks
     };
 
     if (isDragging) {
@@ -84,16 +94,20 @@ export function CategoryFilter({ selectedCategory, onCategoryChange }: CategoryF
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!scrollContainerRef.current) return;
     setIsDragging(true);
+    setHasActuallyDragged(false); // Reset drag state
+    setDragDistance(0);
     setStartX(e.pageX - scrollContainerRef.current.offsetLeft);
     setScrollLeft(scrollContainerRef.current.scrollLeft);
     scrollContainerRef.current.style.cursor = 'grabbing';
-    e.preventDefault(); // Prevent text selection
+    // Don't prevent default here - let buttons handle their own events initially
   };
 
   // Touch support for mobile
   const handleTouchStart = (e: React.TouchEvent) => {
     if (!scrollContainerRef.current) return;
     setIsDragging(true);
+    setHasActuallyDragged(false);
+    setDragDistance(0);
     setStartX(e.touches[0].pageX - scrollContainerRef.current.offsetLeft);
     setScrollLeft(scrollContainerRef.current.scrollLeft);
   };
@@ -102,11 +116,24 @@ export function CategoryFilter({ selectedCategory, onCategoryChange }: CategoryF
     if (!isDragging || !scrollContainerRef.current) return;
     const x = e.touches[0].pageX - scrollContainerRef.current.offsetLeft;
     const walk = (x - startX) * 2;
+    const newDragDistance = Math.abs(walk);
+    setDragDistance(newDragDistance);
+    
+    // Mark as dragged if moved more than 3px
+    if (newDragDistance > 3) {
+      setHasActuallyDragged(true);
+    }
+    
     scrollContainerRef.current.scrollLeft = scrollLeft - walk;
   };
 
   const handleTouchEnd = () => {
     setIsDragging(false);
+    // Reset drag states after a short delay
+    setTimeout(() => {
+      setDragDistance(0);
+      setHasActuallyDragged(false);
+    }, 50);
   };
 
   return (
@@ -133,9 +160,10 @@ export function CategoryFilter({ selectedCategory, onCategoryChange }: CategoryF
               key={category.value}
               ref={isSelected ? selectedButtonRef : null}
               onClick={(e) => {
-                // Prevent click if we were dragging (threshold of 5px)
-                if (isDragging || dragDistance > 5) {
+                // Only prevent click if we actually dragged significantly
+                if (hasActuallyDragged) {
                   e.preventDefault();
+                  e.stopPropagation();
                   return;
                 }
                 onCategoryChange(category.value);
@@ -145,7 +173,7 @@ export function CategoryFilter({ selectedCategory, onCategoryChange }: CategoryF
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-secondary hover:bg-secondary/80 text-secondary-foreground'
               }`}
-              style={{ pointerEvents: isDragging ? 'none' : 'auto' }}
+              style={{ pointerEvents: hasActuallyDragged ? 'none' : 'auto' }}
             >
               {category.label}
             </button>

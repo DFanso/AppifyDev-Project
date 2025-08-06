@@ -5,11 +5,12 @@ from datetime import datetime, timedelta
 
 from ..database import get_db, Article
 from ..schemas import ArticleResponse, ArticleListResponse, ArticleFilter
-from ..services.redis_cache import cache, CacheKeys
+from ..decorators import cached
 
 router = APIRouter()
 
 @router.get("/", response_model=ArticleListResponse)
+@cached(ttl=300, key_prefix="articles")  # 5 minutes
 async def get_articles(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
@@ -21,24 +22,6 @@ async def get_articles(
     db: Session = Depends(get_db)
 ):
     """Get paginated list of articles with optional filtering"""
-    # Generate cache key
-    cache_key = CacheKeys.articles_list(
-        page=page, 
-        page_size=page_size, 
-        category=category, 
-        source=source
-    )
-    
-    # Add date filters to cache key if present
-    if date_from or date_to or sentiment:
-        cache_key += f"&df={date_from}&dt={date_to}&sent={sentiment}"
-    
-    # Try cache first (5 minute TTL for articles)
-    cached_result = cache.get(cache_key)
-    if cached_result is not None:
-        return cached_result
-    
-    # Cache miss - query database
     query = db.query(Article)
     
     # Apply filters
@@ -56,45 +39,27 @@ async def get_articles(
     # Order by published date (newest first)
     query = query.order_by(Article.published_at.desc())
     
-    # Get total count
+    # Get total count and paginated results
     total = query.count()
-    
-    # Apply pagination
     offset = (page - 1) * page_size
     articles = query.offset(offset).limit(page_size).all()
-    
     has_next = total > (page * page_size)
     
-    result = ArticleListResponse(
+    return ArticleListResponse(
         articles=articles,
         total=total,
         page=page,
         page_size=page_size,
         has_next=has_next
     )
-    
-    # Cache the result for 5 minutes
-    cache.set(cache_key, result.dict(), ttl=300)
-    
-    return result
 
 @router.get("/{article_id}", response_model=ArticleResponse)
+@cached(ttl=900, key_prefix="article_detail")  # 15 minutes
 async def get_article(article_id: int, db: Session = Depends(get_db)):
     """Get a specific article by ID"""
-    # Try cache first (longer TTL for individual articles - 15 minutes)
-    cache_key = CacheKeys.article_detail(article_id)
-    cached_article = cache.get(cache_key)
-    if cached_article is not None:
-        return cached_article
-    
-    # Cache miss - query database
     article = db.query(Article).filter(Article.id == article_id).first()
     if not article:
         raise HTTPException(status_code=404, detail="Article not found")
-    
-    # Cache the article for 15 minutes (individual articles change less frequently)
-    cache.set(cache_key, article.__dict__, ttl=900)
-    
     return article
 
 @router.get("/category/{category}", response_model=ArticleListResponse)

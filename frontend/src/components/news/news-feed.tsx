@@ -98,7 +98,13 @@ export function NewsFeed({ searchQuery, selectedCategory, onArticleSelect }: New
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">
-          {searchQuery ? `Search Results: "${searchQuery}"` : 'Latest Tech News'}
+          {searchQuery ? (
+            `Search Results: "${searchQuery}"`
+          ) : selectedCategory !== 'all' ? (
+            selectedCategory.toLowerCase().includes('news') ? selectedCategory : `${selectedCategory} News`
+          ) : (
+            'Latest Tech News'
+          )}
         </h2>
         <span className="text-sm text-muted-foreground">
           {data?.total || 0} articles

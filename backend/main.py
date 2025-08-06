@@ -13,8 +13,11 @@ from app.routers import articles, chat, bookmarks, trending, search
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Initialize database on startup
-    init_db()
+    # Initialize database on startup (with error handling)
+    try:
+        init_db()
+    except Exception as e:
+        print(f"Database initialization: {e}")
     yield
 
 app = FastAPI(

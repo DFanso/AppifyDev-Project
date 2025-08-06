@@ -4,7 +4,8 @@ from typing import List
 
 from ..database import get_db, Bookmark, Article
 from ..schemas import BookmarkCreate, BookmarkResponse
-from ..services.redis_cache import CacheInvalidator, cache, CacheKeys
+from ..services.redis_cache import CacheInvalidator
+from ..decorators import cached
 
 router = APIRouter()
 
@@ -49,6 +50,7 @@ async def create_bookmark(
     )
 
 @router.get("/", response_model=List[BookmarkResponse])
+@cached(ttl=300, key_prefix="bookmarks")  # 5 minutes
 async def get_bookmarks(
     user_id: str = "anonymous",
     skip: int = 0,
@@ -56,12 +58,6 @@ async def get_bookmarks(
     db: Session = Depends(get_db)
 ):
     """Get all bookmarks for a user"""
-    # Try cache first (5 minute TTL for bookmarks)
-    cache_key = CacheKeys.bookmarks_list(user_id) + f"&skip={skip}&limit={limit}"
-    cached_result = cache.get(cache_key)
-    if cached_result is not None:
-        return cached_result
-        
     bookmarks = db.query(Bookmark).filter(
         Bookmark.user_id == user_id
     ).order_by(Bookmark.created_at.desc()).offset(skip).limit(limit).all()
@@ -77,9 +73,6 @@ async def get_bookmarks(
                 article=article,
                 created_at=bookmark.created_at
             ))
-    
-    # Cache the result for 5 minutes
-    cache.set(cache_key, [bookmark.dict() for bookmark in result], ttl=300)
     
     return result
 

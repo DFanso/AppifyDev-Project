@@ -8,7 +8,7 @@ import re
 
 from ..database import get_db, Article, TrendingTopic
 from ..schemas import TrendingTopicResponse, ArticleResponse
-from ..services.redis_cache import cache, CacheKeys
+from ..decorators import cached
 
 router = APIRouter()
 
@@ -162,17 +162,13 @@ def extract_tech_phrases(text: str) -> List[str]:
     return phrases
 
 @router.get("/topics", response_model=List[TrendingTopicResponse])
+@cached(ttl=600, key_prefix="trending")  # 10 minutes
 async def get_trending_topics(
     hours: int = 24,
     limit: int = 10,
     db: Session = Depends(get_db)
 ):
     """Get trending topics from recent articles"""
-    # Try cache first (10 minute TTL for trending topics)
-    cache_key = CacheKeys.trending_topics(hours, limit)
-    cached_result = cache.get(cache_key)
-    if cached_result is not None:
-        return cached_result
     # Get articles from the last N hours
     since = datetime.utcnow() - timedelta(hours=hours)
     recent_articles = db.query(Article).filter(
@@ -245,24 +241,15 @@ async def get_trending_topics(
     # Sort by score (highest first)
     trending_topics.sort(key=lambda x: x.score, reverse=True)
     
-    # Cache the result for 10 minutes
-    result = [topic.dict() for topic in trending_topics]
-    cache.set(cache_key, result, ttl=600)
-    
     return trending_topics
 
 @router.get("/categories")
+@cached(ttl=900, key_prefix="trending_categories")  # 15 minutes
 async def get_trending_categories(
     hours: int = 24,
     db: Session = Depends(get_db)
 ):
     """Get trending categories based on article count"""
-    # Try cache first (15 minute TTL)
-    cache_key = CacheKeys.trending_categories(hours)
-    cached_result = cache.get(cache_key)
-    if cached_result is not None:
-        return cached_result
-        
     since = datetime.utcnow() - timedelta(hours=hours)
     
     category_stats = db.query(
@@ -273,28 +260,18 @@ async def get_trending_categories(
         Article.category.isnot(None)
     ).group_by(Article.category).order_by(desc('count')).all()
     
-    result = [
+    return [
         {"category": category, "count": count}
         for category, count in category_stats
     ]
-    
-    # Cache for 15 minutes
-    cache.set(cache_key, result, ttl=900)
-    
-    return result
 
 @router.get("/sources")
+@cached(ttl=900, key_prefix="trending_sources")  # 15 minutes
 async def get_trending_sources(
     hours: int = 24,
     db: Session = Depends(get_db)
 ):
     """Get trending sources based on article count"""
-    # Try cache first (15 minute TTL)
-    cache_key = CacheKeys.trending_sources(hours)
-    cached_result = cache.get(cache_key)
-    if cached_result is not None:
-        return cached_result
-        
     since = datetime.utcnow() - timedelta(hours=hours)
     
     source_stats = db.query(
@@ -305,15 +282,10 @@ async def get_trending_sources(
         Article.source.isnot(None)
     ).group_by(Article.source).order_by(desc('count')).all()
     
-    result = [
+    return [
         {"source": source, "count": count}
         for source, count in source_stats
     ]
-    
-    # Cache for 15 minutes
-    cache.set(cache_key, result, ttl=900)
-    
-    return result
 
 @router.get("/sentiment")
 async def get_sentiment_trends(

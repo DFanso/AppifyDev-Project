@@ -1,0 +1,10 @@
+# News fetcher cron job - runs every 30 minutes
+*/30 * * * * cd /app && uv run python scripts/fetch_news.py >> /var/log/cron.log 2>&1
+
+# Health check log cleanup - runs daily at 2 AM
+0 2 * * * find /var/log -name "*.log" -mtime +7 -delete
+
+# Database maintenance - runs daily at 3 AM  
+0 3 * * * cd /app && uv run python -c "from app.database import engine; from sqlalchemy import text; engine.execute(text('VACUUM ANALYZE;'))" >> /var/log/cron.log 2>&1
+
+# Empty line required at end of crontab
