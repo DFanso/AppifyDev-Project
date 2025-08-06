@@ -9,7 +9,7 @@ on:
 jobs:
   deploy:
     name: Deploy Application
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     steps:
       - name: Checkout code
@@ -21,32 +21,19 @@ jobs:
           echo "REDIS_URL=${{ secrets.REDIS_URL }}" >> .env
         shell: bash
 
-      - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y sshpass rsync
-
-      - name: Add remote host to known_hosts
-        run: |
-          mkdir -p ~/.ssh
-          ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
-        shell: bash
 
       - name: Sync project files to VPS
         run: |
-          sshpass -p "${{ secrets.VPS_PASSWORD }}" rsync -avz --delete \
-            --exclude=".git/" \
-            --exclude=".github/" \
-            . "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/appify"
+          cp .env /appify/.env
+          cp -r . /appify/
         shell: bash
 
       - name: Deploy on VPS with Docker Compose
         run: |
-          sshpass -p "${{ secrets.VPS_PASSWORD }}" ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} '
-          set -e
           cd /appify
           docker-compose down
           docker-compose -f docker-compose.yml up -d --build
           echo "Pruning old Docker images..."
           docker image prune -af
           echo "Deployment successful!"
-          '
         shell: bash
