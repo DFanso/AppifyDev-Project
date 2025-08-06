@@ -35,13 +35,13 @@ jobs:
           --exclude=.github \
           --exclude=frontend \
           --timeout=600 \
-          -e "sshpass -e ssh -o ConnectTimeout=60 -o ServerAliveInterval=30 -o ServerAliveCountMax=10 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p 2287" \
+          -e "sshpass -e ssh -o ConnectTimeout=60 -o ServerAliveInterval=30 -o ServerAliveCountMax=10 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p 22" \
           ./ ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }}:~/appify/
 
     - name: Build and Deploy Docker Compose
       run: |
         export SSHPASS="${{ secrets.VPS_PASSWORD }}"
-        sshpass -e ssh -o ConnectTimeout=60 -o ServerAliveInterval=30 -o ServerAliveCountMax=10 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p 2287 ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }} '
+        sshpass -e ssh -o ConnectTimeout=60 -o ServerAliveInterval=30 -o ServerAliveCountMax=10 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p 22 ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }} '
         cd ~/appify
         echo "Current directory: $(pwd)"
         echo "Listing files:"
