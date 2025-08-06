@@ -30,7 +30,7 @@ jobs:
 
       - name: Deploy on VPS with Docker Compose
         run: |
-          sudo cd /appify
+          cd /appify
           sudo docker-compose down
           sudo docker-compose -f docker-compose.yml up -d --build
           echo "Pruning old Docker images..."
