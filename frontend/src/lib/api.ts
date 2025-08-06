@@ -19,6 +19,7 @@ const api = axios.create({
   },
   timeout: 10000,
   maxRedirects: 5,
+  withCredentials: true, // Enable credentials for CORS
 });
 
 // Add response interceptor for debugging
